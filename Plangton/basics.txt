@@ -1,0 +1,45 @@
+Connection
+	device id
+	player id
+	ip address
+	send time
+
+
+Login
+1 	type - message = 1, login = 2, logout = 3 
+4 	ip address
+2	port
+32	device id
+4	checksum
+
+Login response
+2	room id
+1	player id	
+
+
+
+Logout 
+1 	type - message = 1, login = 2, logout = 3 
+4 	ip address
+2	port
+32	device id
+4	checksum
+
+
+Message
+1 	type - message = 1, login = 2, logout = 3 
+4 	ip address
+2	port
+2 	room id
+1	player id
+1  	other player id
+1 	options - to all = 1, to others = 2, to player = 3, reliable
+1 	data size
+4	checksum
+
+
+
+240	max data size
+
+
+
