@@ -11,7 +11,7 @@
 
 #include "def.h"
 
-typedef uint64 sx_time;
+typedef time_t sx_time;
 
 #ifdef __cplusplus
 extern "C" {

@@ -14,18 +14,24 @@ public class Test : MonoBehaviour
 
     byte[] buffer = new byte[256];
 
-    void Start()
+    private void Start()
     {
-        Network.serverAddress.Address = new IPAddress(new byte[] { 127, 0, 0, 1 });
-        Network.serverAddress.Port = 31000;
+        Network.ServerAddress.Address = new IPAddress(new byte[] { 127, 0, 0, 1 });
+        Network.ServerAddress.Port = 31000;
+    }
+
+    private void OnApplicationQuit()
+    {
+        Network.End();
     }
 
     private void Update()
     {
-        int received = Network.Receive(buffer);
+        int senderId = -1;
+        int received = Network.Receive(ref senderId, buffer);
         if (received > 0)
         {
-            var str = "Received:";
+            var str = "Received from " + senderId + " : ";
             for (int i = 0; i < received; i++)
                 str += " " + buffer[i];
             Debug.Log(str);
@@ -34,9 +40,29 @@ public class Test : MonoBehaviour
 
     void OnGUI()
     {
-        if (GUI.Button(new Rect(10, 10, 50, 50), "login"))
+        float y = 10;
+        GUI.Label(new Rect(10, y, 150, 30), "Connection: " + Network.Connected);
+        y += 30;
+        GUI.Label(new Rect(10, y, 150, 30), "Ping: " + Network.Ping);
+
+        y += 30;
+        if (GUI.Button(new Rect(10, y, 150, 30), "Start"))
         {
-            Network.Login(System.Text.Encoding.ASCII.GetBytes(device));
+            Network.Start(System.Text.Encoding.ASCII.GetBytes(device));
+        }
+
+        y += 40;
+        if (GUI.Button(new Rect(10, y, 150, 30), "End"))
+        {
+            Network.End();
+        }
+
+        y += 40;
+        if (GUI.Button(new Rect(10, y, 150, 30), "Send All"))
+        {
+            var tmp = new Buffer(230);
+            tmp.AppendString(text);
+            Network.Send(Network.SendType.All, tmp);
         }
     }
 }

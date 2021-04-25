@@ -54,7 +54,7 @@ public class NetSocket
 
     public int Receive(byte[] buffer)
     {
-        if (udpClient.Client.Available < 1) return 0;
+        if (udpClient.Client.Available < 1 || udpClient.Client.Available > buffer.Length) return 0;
 
         try
         {

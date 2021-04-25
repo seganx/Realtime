@@ -10,6 +10,11 @@
         buffer = new byte[size];
     }
 
+    public void Reset()
+    {
+        Length = 0;
+    }
+
     public void AppendByte(byte value)
     {
         byte[] v = { value };
@@ -31,9 +36,23 @@
         Length += 4;
     }
 
-    public void AppendBytes(byte[] value)
+    public void AppendLong(long value)
     {
-        System.Buffer.BlockCopy(value, 0, buffer, Length, value.Length);
-        Length += value.Length;
+        long[] v = { value };
+        System.Buffer.BlockCopy(v, 0, buffer, Length, sizeof(long));
+        Length += sizeof(long);
+    }
+
+
+    public void AppendBytes(byte[] value, int length)
+    {
+        System.Buffer.BlockCopy(value, 0, buffer, Length, length);
+        Length += length;
+    }
+
+    public void AppendString(string value)
+    {
+        var tmp = System.Text.Encoding.ASCII.GetBytes(value);
+        AppendBytes(tmp, tmp.Length);
     }
 }
