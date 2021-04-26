@@ -18,7 +18,7 @@ extern "C" {
 #endif // __cplusplus
 
 SEGAN_LIB_API sx_time sx_time_now();
-SEGAN_LIB_API sx_time sx_time_diff(const sx_time t1, const sx_time t2);
+SEGAN_LIB_API double sx_time_diff(const sx_time t1, const sx_time t2);
 SEGAN_LIB_API void sx_time_print(char* dest, const uint destsize, const sx_time timeval);
 
 

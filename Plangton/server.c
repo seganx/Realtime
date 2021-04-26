@@ -28,13 +28,8 @@ void server_reset(struct Config config)
 
     server.config = config;
 
-    if (server.socket_send > 0) sx_socket_close(server.socket_send);
-    if (server.socket_listener > 0) sx_socket_close(server.socket_listener);
-
-    printf("Initializing listener: ");
-    server.socket_listener = sx_socket_open(config.listener_port, true, false);
-    printf("Initializing sender: ");
-    server.socket_send = sx_socket_open(config.send_port, false, false);
+    if (server.socket > 0) sx_socket_close(server.socket);
+    server.socket = sx_socket_open(config.port, true, false);
 
     for (size_t i = 0; i < ROOM_COUNT; i++)
         server.rooms[i].capacity = config.room_capacity;
@@ -56,25 +51,24 @@ void server_cleanup(void)
 
 void server_shutdown(void)
 {
-    if (server.socket_send > 0) sx_socket_close(server.socket_send);
-    if (server.socket_listener > 0) sx_socket_close(server.socket_listener);
+    if (server.socket > 0) sx_socket_close(server.socket);
     if (server.mutex != null) sx_mutex_destroy(server.mutex);
 }
 
-void server_send(const uint ip, const word port, const void* buffer, const int size)
+void server_send(struct sockaddr* address, const void* buffer, const int size)
 {
-    sx_socket_send(server.socket_send, ip, port, buffer, size);
+    sx_socket_send_in(server.socket, address, buffer, size);
 }
 
-void server_ping(byte* buffer) 
+void server_ping(byte* buffer, struct sockaddr* from)
 {
     struct Ping* ping = (struct Ping*)buffer;
     struct PingResponse response = { TYPE_PING };
     response.time = ping->time;
-    server_send(ping->ip, ping->port, &response, sizeof(struct PingResponse));
+    server_send(from, &response, sizeof(struct PingResponse));
 }
 
-void server_login(byte* buffer)
+void server_login(byte* buffer, struct sockaddr* from)
 {
     struct Login* login = (struct Login*)buffer;
     uint checksum = compute_checksum(buffer, sizeof(struct Login) - sizeof(uint));
@@ -82,14 +76,14 @@ void server_login(byte* buffer)
 
     PlayerAddress address = player_find_address(&server, login->device);
     if (address.room < 0 || address.index < 0)
-        address = player_add(&server, login->device, login->ip, login->port, server_get_token());
+        address = player_add(&server, login->device, from, server_get_token());
 
     struct LoginResponse response = { TYPE_LOGIN };
     response.room = (dword)address.room;
     response.player = (byte)address.index;
     response.token = address.token;
     response.checksum = compute_checksum(&response, sizeof(struct LoginResponse) - sizeof(uint));
-    server_send(login->ip, login->port, &response, sizeof(struct LoginResponse));
+    server_send(from, &response, sizeof(struct LoginResponse));
 }
 
 void server_logout(byte* buffer)
@@ -105,23 +99,28 @@ void server_logout(byte* buffer)
     {
         printf("Logout ");
         player_report(player);
-        player->ip = 0;
+        player->token = 0;
         server.rooms[logout->room].count--;
     }
     sx_mutex_unlock(server.mutex);
 }
 
-void server_packet(byte* buffer)
+void server_packet(byte* buffer, struct sockaddr* from)
 {
     struct Packet packet;
     sx_mem_copy(&packet, buffer, sizeof(struct Packet));
 
     struct Player* player = player_find(&server, packet.room, packet.player);
-    if (player == null || player->token != packet.token) return;
+    if (player == null) return;
+    if (player->token != packet.token)
+    {
+        buffer[0] = TYPE_EXPIRED;
+        server_send(from, buffer, 1);
+        return;
+    }
 
     sx_mutex_lock(server.mutex);
-    player->ip = packet.ip;
-    player->port = packet.port;
+    sx_mem_copy(player->from, from, ADDRESS_LEN);
     player->active_time = sx_time_now();
     sx_mutex_unlock(server.mutex);
 
@@ -135,8 +134,8 @@ void server_packet(byte* buffer)
         buffer[1] = packet.player;
         for (uint i = 0; i < PLAYER_COUNT; i++)
         {
-            if (room->players[i].ip > 0)
-                server_send(room->players[i].ip, room->players[i].port, buffer, packet.datasize + 2);
+            if (room->players[i].token > 0)
+                server_send(room->players[i].from, buffer, packet.datasize + 2);
         }
     }
     break;
@@ -147,8 +146,8 @@ void server_packet(byte* buffer)
         buffer[1] = packet.player;
         for (uint i = 0; i < PLAYER_COUNT; i++)
         {
-            if (i != packet.player && room->players[i].ip > 0)
-                server_send(room->players[i].ip, room->players[i].port, buffer, packet.datasize + 2);
+            if (i != packet.player && room->players[i].token > 0)
+                server_send(room->players[i].from, buffer, packet.datasize + 2);
         }
     }
     break;
@@ -156,12 +155,12 @@ void server_packet(byte* buffer)
         if (packet.other < PLAYER_COUNT)
         {
             struct Player* other = &room->players[packet.other];
-            if (other->ip > 0)
+            if (other->token > 0)
             {
                 buffer += sizeof(struct Packet) - 2;
                 buffer[0] = TYPE_MESSAGE;
                 buffer[1] = packet.player;
-                server_send(other->ip, other->port, buffer, packet.datasize + 2);
+                server_send(other->from, buffer, packet.datasize + 2);
             }
         }
         break;
@@ -205,13 +204,15 @@ void thread_listener(void* param)
 
     while (true)
     {
+        byte from[ADDRESS_LEN] = { 0 };
         byte buffer[256] = { 0 };
-        sx_socket_receive(server.socket_listener, buffer, 255);
+        sx_socket_receive(server.socket, buffer, 254, from);
+
         switch (buffer[0])
         {
-        case TYPE_PING: server_ping(buffer); break;
-        case TYPE_MESSAGE: server_packet(buffer); break;
-        case TYPE_LOGIN: server_login(buffer); break;
+        case TYPE_PING: server_ping(buffer, from); break;
+        case TYPE_MESSAGE: server_packet(buffer, from); break;
+        case TYPE_LOGIN: server_login(buffer, from); break;
         case TYPE_LOGOUT: server_logout(buffer); break;
         }
     }
@@ -229,8 +230,7 @@ int main()
     sx_mem_set(&server, 0, sizeof(struct Server));
     {
         struct Config config = { 0 };
-        config.listener_port = 31000;
-        config.send_port = 31001;
+        config.port = 31000;
         config.room_capacity = 16;
         config.player_timeout = 300;
         server_reset(config);

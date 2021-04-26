@@ -55,18 +55,18 @@ SEGAN_LIB_API bool sx_net_initialize()
 	{
 #if 0
 		//  initialize internal net object
-		struct NetAddress address;
 		char name[32] = {0};
 		sx_str_copy( name, 32, hostName );
-		address.ip_bytes[0] = sx_1th_byte_of(pHost->h_addr_list[0]);
-		address.ip_bytes[1] = sx_2th_byte_of(pHost->h_addr_list[0]);
-		address.ip_bytes[2] = sx_3th_byte_of(pHost->h_addr_list[0]);
-		address.ip_bytes[3] = sx_4th_byte_of(pHost->h_addr_list[0]);
-		address.port  = 0;
-#endif
+
+		byte ip_bytes[4] = { 0 };
+		ip_bytes[0] = sx_1th_byte_of(pHost->h_addr_list[0]);
+		ip_bytes[1] = sx_2th_byte_of(pHost->h_addr_list[0]);
+		ip_bytes[2] = sx_3th_byte_of(pHost->h_addr_list[0]);
+		ip_bytes[3] = sx_4th_byte_of(pHost->h_addr_list[0]);
 		sx_print("Network system initialized successfully on Windows.");
-		//sx_print("	Name: %s", name);
-		//sx_print("	IP: %d.%d.%d.%d", address.ip_bytes[0], address.ip_bytes[1], address.ip_bytes[2], address.ip_bytes[3] );
+		sx_print("	Name: %s", name);
+		sx_print("	IP: %d.%d.%d.%d", ip_bytes[0], ip_bytes[1], ip_bytes[2], ip_bytes[3] );
+#endif
 	}
 	else
 	{

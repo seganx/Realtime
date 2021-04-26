@@ -316,7 +316,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0c14ab706a454e54eabce4c7223148ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  device: 12345678901234567890123456789012
+  device: 12345678901234567890123456789016
   text: salam
 --- !u!4 &2085257298
 Transform:

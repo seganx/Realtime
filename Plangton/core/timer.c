@@ -9,7 +9,7 @@ SEGAN_LIB_API sx_time sx_time_now()
 
 SEGAN_LIB_API double sx_time_diff(const sx_time endtime, const sx_time starttime)
 {
-    return difftime(endtime, starttime);
+    return endtime - starttime;// difftime(endtime, starttime);
 }
 
 SEGAN_LIB_API void sx_time_print(char* dest, const uint destsize, const sx_time timeval)

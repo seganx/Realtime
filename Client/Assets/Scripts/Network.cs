@@ -2,6 +2,7 @@
 using UnityEngine.Networking;
 using System.Net;
 using System.Threading.Tasks;
+using System.Net.Sockets;
 
 public static class Network
 {
@@ -22,8 +23,9 @@ public static class Network
     private const byte packetTypeLogin = 2;
     private const byte packetTypeLogout = 3;
     private const byte packetTypeMessage = 4;
+    private const byte packetTypeExpired = 5;
 
-    private static float pingTime = -10;
+    private static float aliveTime = -10;
     private static byte[] device = null;
     private static readonly long[] time = { 0 };
     private static readonly uint[] token = { 0 };
@@ -36,15 +38,16 @@ public static class Network
     private static readonly Buffer sendBuffer = new Buffer(256);
     private static readonly Buffer pingBuffer = new Buffer(16);
     private static readonly NetSocket socket = new NetSocket();
-    private static readonly IPEndPoint selfAddress = new IPEndPoint(IPAddress.Parse("127.0.0.1"), 0);
+    private static IPEndPoint selfAddress = new IPEndPoint(IPAddress.Any, 0);
 
     private static long Ticks => System.DateTime.Now.Ticks / System.TimeSpan.TicksPerMillisecond;
+    private static float DeathTime => Time.time - aliveTime;
 
     public static IPEndPoint ServerAddress = new IPEndPoint(0, 0);
     public static byte PlayerId => playerId[0];
     public static ushort RoomId => roomId[0];
     public static long Ping { get; private set; } = 0;
-    public static bool Connected => (Time.time - pingTime) < 10.0f;
+    public static bool Connected => DeathTime < 5.0f;
 
     public static uint Token
     {
@@ -56,59 +59,42 @@ public static class Network
     private static void RuntimeInitialize()
     {
         selfAddress.Port = socket.Open(32000, 35000);
-#if !UNITY_EDITOR
-        UpdateAddress();
-#endif
     }
 
-    private static async void UpdateAddress()
-    {
-        float startTime = Time.time;
-        var web = UnityWebRequest.Get("https://ipinfo.io/json").SendWebRequest();
-        while (web.isDone == false || Time.time - startTime > 10) await Task.Delay(10);
-
-        if (web.isDone == false)
-        {
-            web = UnityWebRequest.Get("http://seganx.ir/games/api/ip.php").SendWebRequest();
-            while (web.isDone == false || Time.time - startTime > 10) await Task.Delay(10);
-        }
-
-        try
-        {
-            var ipinfo = JsonUtility.FromJson<IpInfo>(web.webRequest.downloadHandler.text);
-            selfAddress.Address = IPAddress.Parse(ipinfo.ip);
-            Debug.Log("[Network] Self address: " + selfAddress.Address + ":" + selfAddress.Port);
-        }
-        catch (System.Exception ex)
-        {
-            Debug.LogException(ex);
-        }
-    }
 
     public static void Start(byte[] devicebytes)
     {
-        if (devicebytes.Length != 32)
+        if (device != null)
         {
-            Debug.LogError("[Network] Login: Device id must be 32 bytes");
+            Debug.LogWarning("[Network] Already started!");
             return;
         }
+
+        if (devicebytes.Length != 32)
+        {
+            Debug.LogError("[Network] Start: Device id must be 32 bytes");
+            return;
+        }
+
         device = devicebytes;
-        pingTime = -10;
+        aliveTime = -10;
         Login();
         Pinger();
     }
 
     private static async void Login()
     {
-        while (Token == 0)
+        while (device != null)
         {
-            loginBuffer.Reset();
-            loginBuffer.AppendByte(packetTypeLogin);
-            loginBuffer.AppendBytes(selfAddress.Address.GetAddressBytes(), 4);
-            loginBuffer.AppendUshort((ushort)selfAddress.Port);
-            loginBuffer.AppendBytes(device, 32);
-            loginBuffer.AppendUint(ComputeChecksum(loginBuffer.Bytes, loginBuffer.Length));
-            socket.Send(ServerAddress, loginBuffer.Bytes, loginBuffer.Length);
+            if (Token == 0)
+            {
+                loginBuffer.Reset();
+                loginBuffer.AppendByte(packetTypeLogin);
+                loginBuffer.AppendBytes(device, 32);
+                loginBuffer.AppendUint(ComputeChecksum(loginBuffer.Bytes, loginBuffer.Length));
+                socket.Send(ServerAddress, loginBuffer.Bytes, loginBuffer.Length);
+                Debug.Log("Login to" + ServerAddress);
+            }
             await Task.Delay(1000);
         }
     }
@@ -119,11 +105,9 @@ public static class Network
         {
             pingBuffer.Reset();
             pingBuffer.AppendByte(packetTypePing);
-            pingBuffer.AppendBytes(selfAddress.Address.GetAddressBytes(), 4);
-            pingBuffer.AppendUshort((ushort)selfAddress.Port);
             pingBuffer.AppendLong(Ticks);
             socket.Send(ServerAddress, pingBuffer.Bytes, pingBuffer.Length);
-            await Task.Delay(1000);
+            await Task.Delay(500);
         }
     }
 
@@ -142,7 +126,7 @@ public static class Network
         Ping = 0;
         Token = 0;
         device = null;
-        pingTime = -10;
+        aliveTime = -10;
     }
 
     public static void Send(SendType type, Buffer data, byte otherId = 0)
@@ -164,8 +148,6 @@ public static class Network
 
         sendBuffer.Reset();
         sendBuffer.AppendByte(packetTypeMessage);
-        sendBuffer.AppendBytes(selfAddress.Address.GetAddressBytes(), 4);
-        sendBuffer.AppendUshort((ushort)selfAddress.Port);
         sendBuffer.AppendUshort(RoomId);
         sendBuffer.AppendByte(PlayerId);
         sendBuffer.AppendUint(Token);
@@ -179,6 +161,8 @@ public static class Network
 
     public static int Receive(ref int sender, byte[] destBuffer)
     {
+        if (device == null) return 0;
+
         var packsize = socket.Receive(receivedBuffer);
         if (packsize < 1) return 0;
 
@@ -188,7 +172,7 @@ public static class Network
                 {
                     System.Buffer.BlockCopy(receivedBuffer, 1, time, 0, sizeof(long));
                     Ping = (Ticks - time[0]);
-                    pingTime = Time.unscaledTime;
+                    aliveTime = Time.unscaledTime;
                 }
                 break;
 
@@ -211,6 +195,12 @@ public static class Network
                     sender = senderId[0];
                     return packsize - 2;
                 }
+
+            case packetTypeExpired:
+                {
+                    Token = 0;
+                }
+                break;
         }
         return 0;
     }

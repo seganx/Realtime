@@ -6,12 +6,10 @@ Connection
 
 Ping
 1 	type = 1
-4 	ip address
 2	port
 
 Login
 1 	type = 2
-4 	ip address
 2	port
 32	device id
 4	checksum
@@ -25,7 +23,6 @@ Logout
 
 Message
 1 	type = 4
-4 	ip address
 2	port
 2 	room id
 1	player id

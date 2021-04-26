@@ -15,9 +15,7 @@ uint compute_checksum(const byte* buffer, const uint len)
 
 void player_report(struct Player* player)
 {
-    byte ip[4] = { 0 };
-    sx_mem_copy(ip, &player->ip, 4);
-    sx_print("Player[%d.%d.%d.%d:%u] token[%u] time[%u] device:%.32s", ip[0], ip[1], ip[2], ip[3], player->port, player->token, player->active_time, player->device);
+    sx_print("Player token[%u] time[%u] device:%.32s", player->token, player->active_time, player->device);
 }
 
 struct Player* player_find(struct Server* server, word room, byte id)
@@ -37,7 +35,7 @@ struct PlayerAddress player_find_address(struct Server* server, char* device)
         for (uint p = 0; p < PLAYER_COUNT; p++)
         {
             struct Player* player = &server->rooms[r].players[p];
-            if (player->ip > 0 && sx_mem_cmp(player->device, device, DEVICE_LEN) == 0)
+            if (player->token > 0 && sx_mem_cmp(player->device, device, DEVICE_LEN) == 0)
             {
                 result.room = r;
                 result.index = p;
@@ -49,7 +47,7 @@ struct PlayerAddress player_find_address(struct Server* server, char* device)
     return result;
 }
 
-struct PlayerAddress player_add(struct Server* server, char* device, uint ip, word port, uint token)
+struct PlayerAddress player_add(struct Server* server, char* device, struct sockaddr* from, uint token)
 {
     struct PlayerAddress result = { -1, -1 };
 
@@ -61,13 +59,12 @@ struct PlayerAddress player_add(struct Server* server, char* device, uint ip, wo
             for (uint p = 0; p < PLAYER_COUNT; p++)
             {
                 sx_mutex_lock(server->mutex);
-                if (room->players[p].ip == 0)
+                if (room->players[p].token == 0)
                 {
                     room->count++;
-                    room->players[p].ip = ip;
-                    room->players[p].port = port;
                     room->players[p].token = token;
                     room->players[p].active_time = sx_time_now();
+                    sx_mem_copy(room->players[p].from, from, ADDRESS_LEN);
                     sx_mem_copy(room->players[p].device, device, DEVICE_LEN);
                     result.room = r;
                     result.index = p;
@@ -90,16 +87,16 @@ struct PlayerAddress player_add(struct Server* server, char* device, uint ip, wo
 void room_cleanup(struct sx_mutex* mutex, struct Room* room, long timeout)
 {
     sx_mutex_lock(mutex);
-    sx_time now = sx_time_now();
+    long now = sx_time_now();
     for (uint i = 0; i < PLAYER_COUNT; i++)
     {
         struct Player* player = &room->players[i];
-        if (player->ip > 0 && sx_time_diff(now, player->active_time) > timeout)
+        if (player->token > 0 && sx_time_diff(now, player->active_time) > timeout)
         {
             printf("Cleaned ");
             player_report(player);
 
-            player->ip = 0;
+            player->token = 0;
             room->count--;
         }
     }
@@ -114,7 +111,7 @@ void room_report(struct Server* server, int r)
     sx_print("Room[%d] -> %d players", r, room->count);
     for (uint p = 0; p < PLAYER_COUNT; p++)
     {
-        if (room->players[p].ip < 1) continue;
+        if (room->players[p].token < 1) continue;
         player_report(&room->players[p]);
     }
 }

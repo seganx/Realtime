@@ -15,6 +15,7 @@
 
 #include "net.h"
 
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -28,8 +29,10 @@ SEGAN_LIB_API void sx_socket_close(uint socket);
 //! send data to the destination address
 SEGAN_LIB_API bool sx_socket_send(uint socket, const uint ip, const word port, const void* buffer, const int size);
 
+SEGAN_LIB_API bool sx_socket_send_in(uint socket, struct sockaddr* address, const void* buffer, const int size);
+
 //! pick up data on the port and fill out address of sender
-SEGAN_LIB_API sint sx_socket_receive( uint socket, void* buffer, const int size );
+SEGAN_LIB_API sint sx_socket_receive( uint socket, void* buffer, const int size, struct sockaddr* from );
 
 #ifdef __cplusplus
 }

@@ -3,6 +3,7 @@ using UnityEngine;
 using System.Collections;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 
 public class Test : MonoBehaviour
 {
@@ -16,7 +17,9 @@ public class Test : MonoBehaviour
 
     private void Start()
     {
-        Network.ServerAddress.Address = new IPAddress(new byte[] { 127, 0, 0, 1 });
+        //GetLocalIPAddress();
+        //Network.ServerAddress.Address = new IPAddress(new byte[] { 192, 168, 1, 103 });
+        Network.ServerAddress.Address = new IPAddress(new byte[] { 79, 175, 133, 132 });
         Network.ServerAddress.Port = 31000;
     }
 
@@ -64,5 +67,21 @@ public class Test : MonoBehaviour
             tmp.AppendString(text);
             Network.Send(Network.SendType.All, tmp);
         }
+    }
+
+
+    public static string GetLocalIPAddress()
+    {
+        var host = Dns.GetHostEntry(Dns.GetHostName());
+        foreach (var ip in host.AddressList)
+        {
+            if (ip.AddressFamily == AddressFamily.InterNetwork)
+            {
+                Debug.Log(ip);
+                return ip.ToString();
+            }
+        }
+        Debug.LogError("No network adapters with an IPv4 address in the system!");
+        return string.Empty;
     }
 }
