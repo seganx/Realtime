@@ -7,18 +7,13 @@ using System.Net.Sockets;
 
 public class Test : MonoBehaviour
 {
-    [TextArea]
-    public string device = "12345678901234567890123456789012";
-    [TextArea]
-    public string text = "salam";
+    [SerializeField] private Player player = null;
 
-
-    byte[] buffer = new byte[256];
+    private byte[] buffer = new byte[256];
 
     private void Start()
     {
-        //GetLocalIPAddress();
-        //Network.ServerAddress.Address = new IPAddress(new byte[] { 192, 168, 1, 103 });
+        Application.runInBackground = true;
         Network.ServerAddress.Address = new IPAddress(new byte[] { 79, 175, 133, 132 });
         Network.ServerAddress.Port = 31000;
     }
@@ -30,58 +25,74 @@ public class Test : MonoBehaviour
 
     private void Update()
     {
+        player.id = Network.PlayerId;
+
         int senderId = -1;
         int received = Network.Receive(ref senderId, buffer);
         if (received > 0)
         {
+            Player.Received(senderId, buffer);
+#if UNITY_EDITOR
             var str = "Received from " + senderId + " : ";
             for (int i = 0; i < received; i++)
                 str += " " + buffer[i];
             Debug.Log(str);
+#endif
         }
     }
 
     void OnGUI()
     {
-        float y = 10;
-        GUI.Label(new Rect(10, y, 150, 30), "Connection: " + Network.Connected);
-        y += 30;
-        GUI.Label(new Rect(10, y, 150, 30), "Ping: " + Network.Ping);
+        Rect rect = new Rect(10, 10, 150, 30);
+        GUI.Label(rect, "Connection: " + Network.Connected);
+        rect.y += 20;
+        GUI.Label(rect, "Ping: " + Network.Ping);
 
-        y += 30;
-        if (GUI.Button(new Rect(10, y, 150, 30), "Start"))
-        {
-            Network.Start(System.Text.Encoding.ASCII.GetBytes(device));
-        }
+        rect.y += 30;
+        if (GUI.Button(rect, "Start"))
+            Network.Start(System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
 
-        y += 40;
-        if (GUI.Button(new Rect(10, y, 150, 30), "End"))
-        {
+        rect.y += 40;
+        if (GUI.Button(rect, "End"))
             Network.End();
-        }
 
-        y += 40;
-        if (GUI.Button(new Rect(10, y, 150, 30), "Send All"))
-        {
-            var tmp = new Buffer(230);
-            tmp.AppendString(text);
-            Network.Send(Network.SendType.All, tmp);
-        }
+        rect.y += 80;
+        rect.width = 40;
+        if (GUI.Button(rect, "up"))
+            player.transform.position += Vector3.up * 0.2f;
+
+        rect.y += 40;
+        if (GUI.Button(rect, "left"))
+            player.transform.position += Vector3.left * 0.2f;
+
+        rect.x += 50;
+        if (GUI.Button(rect, "right"))
+            player.transform.position += Vector3.right * 0.2f;
+        rect.x -=  50;
+
+        rect.y += 40;
+        if (GUI.Button(rect, "down"))
+            player.transform.position += Vector3.down * 0.2f;
+
+        rect.y += 40;
+        if (GUI.Button(rect, "color"))
+            player.ChangeColor(++player.colorIndex);
+
     }
 
 
-    public static string GetLocalIPAddress()
+
+    //////////////////////////////////////////////////////
+    /// STATIC MEMBERS
+    //////////////////////////////////////////////////////
+    public static string ComputeMD5(string str, string salt)
     {
-        var host = Dns.GetHostEntry(Dns.GetHostName());
-        foreach (var ip in host.AddressList)
-        {
-            if (ip.AddressFamily == AddressFamily.InterNetwork)
-            {
-                Debug.Log(ip);
-                return ip.ToString();
-            }
-        }
-        Debug.LogError("No network adapters with an IPv4 address in the system!");
-        return string.Empty;
+        var md5 = System.Security.Cryptography.MD5.Create();
+        byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(str + salt);
+        byte[] hashBytes = md5.ComputeHash(inputBytes);
+        var res = new System.Text.StringBuilder();
+        for (int i = 0; i < hashBytes.Length; i++)
+            res.Append(hashBytes[i].ToString("X2"));
+        return res.ToString();
     }
 }

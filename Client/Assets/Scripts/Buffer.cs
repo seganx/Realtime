@@ -29,6 +29,13 @@
         Length += 2;
     }
 
+    public void AppendFloat(float value)
+    {
+        float[] v = { value };
+        System.Buffer.BlockCopy(v, 0, buffer, Length, 4);
+        Length += 4;
+    }
+
     public void AppendUint(uint value)
     {
         uint[] v = { value };
@@ -42,7 +49,6 @@
         System.Buffer.BlockCopy(v, 0, buffer, Length, sizeof(long));
         Length += sizeof(long);
     }
-
 
     public void AppendBytes(byte[] value, int length)
     {

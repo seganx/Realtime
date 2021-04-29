@@ -41,7 +41,7 @@ public static class Network
     private static IPEndPoint selfAddress = new IPEndPoint(IPAddress.Any, 0);
 
     private static long Ticks => System.DateTime.Now.Ticks / System.TimeSpan.TicksPerMillisecond;
-    private static float DeathTime => Time.time - aliveTime;
+    private static float DeathTime => Time.unscaledTime - aliveTime;
 
     public static IPEndPoint ServerAddress = new IPEndPoint(0, 0);
     public static byte PlayerId => playerId[0];
@@ -93,7 +93,6 @@ public static class Network
                 loginBuffer.AppendBytes(device, 32);
                 loginBuffer.AppendUint(ComputeChecksum(loginBuffer.Bytes, loginBuffer.Length));
                 socket.Send(ServerAddress, loginBuffer.Bytes, loginBuffer.Length);
-                Debug.Log("Login to" + ServerAddress);
             }
             await Task.Delay(1000);
         }
@@ -107,7 +106,7 @@ public static class Network
             pingBuffer.AppendByte(packetTypePing);
             pingBuffer.AppendLong(Ticks);
             socket.Send(ServerAddress, pingBuffer.Bytes, pingBuffer.Length);
-            await Task.Delay(500);
+            await Task.Delay(700);
         }
     }
 
