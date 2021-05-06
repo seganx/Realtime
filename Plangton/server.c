@@ -97,8 +97,6 @@ void server_logout(byte* buffer)
 
     sx_mutex_lock(server.mutex);
     {
-        printf("Logout ");
-        player_report(player);
         player->token = 0;
         server.rooms[logout->room].count--;
     }
@@ -169,14 +167,15 @@ void server_packet(byte* buffer, struct sockaddr* from)
 
 void server_report(void)
 {
-    int c = 0;
+    int total_rooms = 0, total_players = 0;
     for (uint r = 0; r < ROOM_COUNT; r++)
     {
         if (server.rooms[r].count < 1) continue;
         sx_print("Room[%d] -> %d players", r, server.rooms[r].count);
-        c++;
+        total_rooms++;
+        total_players += server.rooms[r].count;
     }
-    sx_print("Total active rooms: %d", c);
+    sx_print("Total active rooms: %d\nTotal active players: %d", total_rooms, total_players);
 }
 
 
@@ -251,13 +250,17 @@ int main()
         sx_mem_set(cmd, 0, 128);
         fgets(cmd, 127, stdin);
 
-        if (sx_str_cmp(cmd, "report server\n") == 0)
-            server_report();
+        char cmd1[32] = { 0 };
+        char cmd2[32] = { 0 };
+        int value = 0;
+        sscanf_s(cmd, "%s %s %d", cmd1, 32, cmd2, 32, &value);
 
-        if (sx_str_str(cmd, "report room") != null)
+        if (sx_str_cmp(cmd1, "report") == 0)
         {
-            //int index = scanf()
-            room_report(&server, 0);
+            if (sx_str_cmp(cmd2, "server") == 0)
+                server_report();
+            else if (sx_str_cmp(cmd2, "room") == 0)
+                room_report(&server, value);
         }
 
         sx_sleep(1);

@@ -3,7 +3,7 @@
     "m_SelectedPackage": {
         "deviceId": "R58N6062KMN",
         "name": "com.seganx.client1",
-        "processId": 30615,
+        "processId": 14543,
         "exited": false
     },
     "m_SelectedPriority": 0,
@@ -48,6 +48,60 @@
             "deviceId": "R58N6062KMN",
             "name": "com.seganx.client1",
             "processId": 30615,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 28809,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 26455,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 372,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 3529,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 5872,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 6250,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 11292,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 2268,
+            "exited": false
+        },
+        {
+            "deviceId": "R58N6062KMN",
+            "name": "com.seganx.client1",
+            "processId": 14543,
             "exited": false
         }
     ],

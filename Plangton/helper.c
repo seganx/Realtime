@@ -69,10 +69,6 @@ struct PlayerAddress player_add(struct Server* server, char* device, struct sock
                     result.room = r;
                     result.index = p;
                     result.token = token;
-
-                    printf("Added ");
-                    player_report(&room->players[p]);
-
                     sx_mutex_unlock(server->mutex);
                     return result;
                 }
@@ -93,9 +89,6 @@ void room_cleanup(struct sx_mutex* mutex, struct Room* room, long timeout)
         struct Player* player = &room->players[i];
         if (player->token > 0 && sx_time_diff(now, player->active_time) > timeout)
         {
-            printf("Cleaned ");
-            player_report(player);
-
             player->token = 0;
             room->count--;
         }

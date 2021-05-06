@@ -50,12 +50,26 @@ public class Test : MonoBehaviour
 
         rect.y += 30;
         if (GUI.Button(rect, "Start"))
+#if UNITY_STANDALONE_WIN
+            Network.Start(System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
+#else
             Network.Start(System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
+#endif
 
         rect.y += 40;
         if (GUI.Button(rect, "End"))
             Network.End();
 
+#if UNITY_STANDALONE_WIN
+        if (Input.GetKey(KeyCode.UpArrow))
+            player.transform.position += Vector3.up * 0.01f;
+        if (Input.GetKey(KeyCode.DownArrow))
+            player.transform.position += Vector3.down * 0.01f;
+        if (Input.GetKey(KeyCode.LeftArrow))
+            player.transform.position += Vector3.left * 0.01f;
+        if (Input.GetKey(KeyCode.RightArrow))
+            player.transform.position += Vector3.right * 0.01f;
+#else
         rect.y += 80;
         rect.width = 40;
         if (GUI.Button(rect, "up"))
@@ -73,7 +87,7 @@ public class Test : MonoBehaviour
         rect.y += 40;
         if (GUI.Button(rect, "down"))
             player.transform.position += Vector3.down * 0.2f;
-
+#endif
         rect.y += 40;
         if (GUI.Button(rect, "color"))
             player.ChangeColor(++player.colorIndex);
