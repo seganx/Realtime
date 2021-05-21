@@ -1,8 +1,6 @@
 ﻿using UnityEngine;
-using UnityEngine.Networking;
 using System.Net;
 using System.Threading.Tasks;
-using System.Net.Sockets;
 
 public static class Network
 {
@@ -27,40 +25,21 @@ public static class Network
 
     private static float aliveTime = -10;
     private static byte[] device = null;
-    private static readonly long[] time = { 0 };
-    private static readonly uint[] token = { 0 };
-    private static readonly ushort[] roomId = { 0 };
-    private static readonly byte[] playerId = { 0 };
-    private static readonly byte[] senderId = { 0 };
-    private static readonly uint[] checksum = { 0 };
-    private static readonly byte[] receivedBuffer = new byte[256];
-    private static readonly Buffer loginBuffer = new Buffer(64);
-    private static readonly Buffer sendBuffer = new Buffer(256);
-    private static readonly Buffer pingBuffer = new Buffer(16);
+    private static readonly BufferReader receivedBuffer = new BufferReader(256);
+    private static readonly BufferWriter loginBuffer = new BufferWriter(64);
+    private static readonly BufferWriter sendBuffer = new BufferWriter(256);
+    private static readonly BufferWriter pingBuffer = new BufferWriter(16);
     private static readonly NetSocket socket = new NetSocket();
-    private static IPEndPoint selfAddress = new IPEndPoint(IPAddress.Any, 0);
 
     private static long Ticks => System.DateTime.Now.Ticks / System.TimeSpan.TicksPerMillisecond;
     private static float DeathTime => Time.unscaledTime - aliveTime;
 
     public static IPEndPoint ServerAddress = new IPEndPoint(0, 0);
-    public static byte PlayerId => playerId[0];
-    public static ushort RoomId => roomId[0];
     public static long Ping { get; private set; } = 0;
+    public static uint Token { get; private set; } = 0;
+    public static byte PlayerId { get; private set; } = 0;
+    public static ushort RoomId { get; private set; } = 0;
     public static bool Connected => DeathTime < 5.0f;
-
-    public static uint Token
-    {
-        get => token[0];
-        private set => token[0] = value;
-    }
-
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
-    private static void RuntimeInitialize()
-    {
-        selfAddress.Port = socket.Open(32000, 35000);
-    }
-
 
     public static void Start(byte[] devicebytes)
     {
@@ -76,10 +55,29 @@ public static class Network
             return;
         }
 
+        socket.Open(32000, 35000);
         device = devicebytes;
         aliveTime = -10;
         Login();
         Pinger();
+    }
+
+    public static void End()
+    {
+        if (device == null) return;
+        sendBuffer.Reset();
+        sendBuffer.AppendByte(packetTypeLogout);
+        sendBuffer.AppendUshort(RoomId);
+        sendBuffer.AppendByte(PlayerId);
+        sendBuffer.AppendUint(Token);
+        sendBuffer.AppendUint(ComputeChecksum(sendBuffer.Bytes, sendBuffer.Length));
+        socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
+
+        Ping = 0;
+        Token = 0;
+        device = null;
+        aliveTime = -10;
+        socket.Close();
     }
 
     private static async void Login()
@@ -110,25 +108,7 @@ public static class Network
         }
     }
 
-
-    public static void End()
-    {
-        if (device == null) return;
-        sendBuffer.Reset();
-        sendBuffer.AppendByte(packetTypeLogout);
-        sendBuffer.AppendUshort(RoomId);
-        sendBuffer.AppendByte(PlayerId);
-        sendBuffer.AppendUint(Token);
-        sendBuffer.AppendUint(ComputeChecksum(sendBuffer.Bytes, sendBuffer.Length));
-        socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
-
-        Ping = 0;
-        Token = 0;
-        device = null;
-        aliveTime = -10;
-    }
-
-    public static void Send(SendType type, Buffer data, byte otherId = 0)
+    public static void Send(SendType type, BufferWriter data, byte otherId = 0)
     {
         if (device == null || Token == 0) return;
         if (data.Length > 230)
@@ -162,36 +142,38 @@ public static class Network
     {
         if (device == null) return 0;
 
-        var packsize = socket.Receive(receivedBuffer);
+        var packsize = socket.Receive(receivedBuffer.Bytes);
         if (packsize < 1) return 0;
 
-        switch (receivedBuffer[0])
+        receivedBuffer.Reset();
+        switch (receivedBuffer.ReadByte())
         {
             case packetTypePing:
                 {
-                    System.Buffer.BlockCopy(receivedBuffer, 1, time, 0, sizeof(long));
-                    Ping = (Ticks - time[0]);
+                    Ping = (Ticks - receivedBuffer.ReadLong());
                     aliveTime = Time.unscaledTime;
                 }
                 break;
 
             case packetTypeLogin:
                 {
-                    System.Buffer.BlockCopy(receivedBuffer, 8, checksum, 0, 4);
-                    if (checksum[0] == ComputeChecksum(receivedBuffer, 8))
+                    var roomId = receivedBuffer.ReadUshort();
+                    var playerId = receivedBuffer.ReadByte();
+                    var token = receivedBuffer.ReadUint();
+                    var checksum = receivedBuffer.ReadUint();
+                    if (checksum == ComputeChecksum(receivedBuffer.Bytes, 8))
                     {
-                        System.Buffer.BlockCopy(receivedBuffer, 1, roomId, 0, 2);
-                        System.Buffer.BlockCopy(receivedBuffer, 3, playerId, 0, 1);
-                        System.Buffer.BlockCopy(receivedBuffer, 4, token, 0, 4);
+                        Token = token;
+                        RoomId = roomId;
+                        PlayerId = playerId;
                     }
                     return 0;
                 }
 
             case packetTypeMessage:
                 {
-                    System.Buffer.BlockCopy(receivedBuffer, 1, senderId, 0, 1);
-                    System.Buffer.BlockCopy(receivedBuffer, 2, destBuffer, 0, packsize - 2);
-                    sender = senderId[0];
+                    sender = receivedBuffer.ReadByte();
+                    receivedBuffer.ReadBytes(destBuffer, packsize - 2);
                     return packsize - 2;
                 }
 

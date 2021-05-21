@@ -1,9 +1,6 @@
-﻿using System;
-using UnityEngine;
-using System.Collections;
+﻿using UnityEngine;
 using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
+
 
 public class Test : MonoBehaviour
 {
@@ -16,6 +13,14 @@ public class Test : MonoBehaviour
         Application.runInBackground = true;
         Network.ServerAddress.Address = new IPAddress(new byte[] { 79, 175, 133, 132 });
         Network.ServerAddress.Port = 31000;
+
+        var b = new BufferWriter(100);
+        b.AppendString("Hello");
+        b.AppendVector3(new Vector3(20, 10, 30));
+
+        var r = new BufferReader(b.Bytes);
+        Debug.Log(r.ReadString());
+        Debug.Log(r.ReadVector3());
     }
 
     private void OnApplicationQuit()

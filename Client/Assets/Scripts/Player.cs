@@ -9,6 +9,8 @@ public class Player : MonoBehaviour
     public int id = 0;
     public byte colorIndex = 0;
 
+    public NetPlayer netPlayer = null;
+
     private void OnEnable()
     {
         players.Add(this);
@@ -28,7 +30,7 @@ public class Player : MonoBehaviour
 
     private IEnumerator SendPosition()
     {
-        Buffer buffer = new Buffer(128);
+        BufferWriter buffer = new BufferWriter(128);
         var wait = new WaitForSeconds(0.1f);
         while (Network.PlayerId == id)
         {
@@ -51,7 +53,7 @@ public class Player : MonoBehaviour
 
     private IEnumerator SendInfo()
     {
-        Buffer buffer = new Buffer(128);
+        BufferWriter buffer = new BufferWriter(128);
         var wait = new WaitForSeconds(1);
         while (Network.PlayerId == id)
         {
