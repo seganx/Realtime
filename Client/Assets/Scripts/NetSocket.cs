@@ -1,68 +1,69 @@
 ﻿using UnityEngine;
-using System;
 using System.Net;
 using System.Net.Sockets;
 
-public class NetSocket
+namespace SeganX.Plankton.Net
 {
-    private UdpClient udpClient = null;
-
-    private EndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
-
-    // open a udp socket on a port in range and return the port number
-    public int Open(int minPort, int maxPort)
+    public class NetSocket
     {
-        for (int port = minPort; port <= maxPort; port++)
+        private UdpClient udpClient = null;
+
+        private EndPoint anyIP = new IPEndPoint(IPAddress.Any, 0);
+
+        // open a udp socket on a port in range and return the port number
+        public int Open(int minPort, int maxPort)
         {
+            for (int port = minPort; port <= maxPort; port++)
+            {
+                try
+                {
+                    Close();
+                    udpClient = new UdpClient(port);
+                    udpClient.Client.Blocking = false;
+                    return port;
+                }
+                catch { }
+            }
+            return 0;
+        }
+
+        public void Close()
+        {
+            if (udpClient != null)
+                udpClient.Close();
+        }
+
+        public bool Send(IPEndPoint destination, byte[] buffer, int size)
+        {
+            if (udpClient == null || buffer == null || buffer.Length < size || size < 1)
+            {
+                Debug.LogError("Send failed!");
+                return false;
+            }
+
             try
             {
-                Close();
-                udpClient = new UdpClient(port);
-                udpClient.Client.Blocking = false;
-                return port;
+                // Sends a message to the host to which you have connected.
+                int sentBytes = udpClient.Send(buffer, size, destination);
+                return sentBytes == size;
             }
-            catch { }
+            catch
+            {
+                return false;
+            }
         }
-        return 0;
-    }
 
-    public void Close()
-    {
-        if (udpClient != null)
-            udpClient.Close();
-    }
-
-    public bool Send(IPEndPoint destination, byte[] buffer, int size)
-    {
-        if (udpClient == null || buffer == null || buffer.Length < size || size < 1)
+        public int Receive(byte[] buffer)
         {
-            Debug.LogError("Send failed!");
-            return false;
-        }
+            if (udpClient.Client.Available < 1) return 0;
 
-        try
-        {
-            // Sends a message to the host to which you have connected.
-            int sentBytes = udpClient.Send(buffer, size, destination);
-            return sentBytes == size;
-        }
-        catch
-        {
-            return false;
-        }
-    }
+            try
+            {
+                return udpClient.Client.ReceiveFrom(buffer, ref anyIP);
+            }
+            catch { };
 
-    public int Receive(byte[] buffer)
-    {
-        if (udpClient.Client.Available < 1 || udpClient.Client.Available > buffer.Length) return 0;
-
-        try
-        {
-            return udpClient.Client.ReceiveFrom(buffer, ref anyIP);
+            return 0;
         }
-        catch {  };
-
-        return 0;
     }
 }
-

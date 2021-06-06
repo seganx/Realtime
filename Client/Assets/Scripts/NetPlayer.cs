@@ -1,40 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
+using SeganX.Plankton.Net;
 
-public class NetPlayer
+namespace SeganX.Plankton
 {
-    public int Id { get; private set; } = 0;
-
-    public bool IsMine => Network.PlayerId == Id;
-    public bool IsOther => Network.PlayerId != Id;
-
-    public Action OnReceived = () => { };
-
-    private NetPlayer(int id)
+    public class NetPlayer
     {
-        Id = id;
-    }
+        private readonly Netlayer netlayer;
 
-    public void Send(Network.SendType type, BufferWriter data, byte otherId = 0)
-    {
-        if (IsOther) return;
-        Network.Send(type, data, otherId);
-    }
+        public int Id { get; private set; } = 0;
+        public float LastActiveTime { get; set; } = 0;
+        public bool IsActive { get; set; } = true;
+        public bool IsMine => netlayer.PlayerId == Id;
+        public bool IsOther => netlayer.PlayerId != Id;
 
-    //////////////////////////////////////////////////////
-    /// STATIC MEMBERS
-    //////////////////////////////////////////////////////
-    public static readonly List<NetPlayer> all = new List<NetPlayer>();
+        public Action<BufferReader> OnReceived = Buffer => { };
+        public Action OnDestory = () => { };
 
-    public static NetPlayer Create(int id)
-    {
-        var res = new NetPlayer(id);
-        all.Add(res);
-        return res;
-    }
+        public NetPlayer(Netlayer netlayer, int id)
+        {
+            this.netlayer = netlayer;
+            Id = id;
+        }
 
-    public static void Destroy(NetPlayer player)
-    {
-        all.Remove(player);
+        public void Send(SendType type, BufferWriter data, byte otherId = 0)
+        {
+            if (IsOther) return;
+            netlayer.Send(type, data, otherId);
+        }
     }
 }

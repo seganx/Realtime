@@ -107,6 +107,7 @@ void server_packet(byte* buffer, struct sockaddr* from)
 {
     struct Packet packet;
     sx_mem_copy(&packet, buffer, sizeof(struct Packet));
+    if (packet.room >= ROOM_COUNT || packet.player >= PLAYER_COUNT || packet.datasize >= DATA_MAXLEN) return;
 
     struct Player* player = player_find(&server, packet.room, packet.player);
     if (player == null) return;
@@ -205,7 +206,7 @@ void thread_listener(void* param)
     {
         byte from[ADDRESS_LEN] = { 0 };
         byte buffer[256] = { 0 };
-        sx_socket_receive(server.socket, buffer, 254, from);
+        sx_socket_receive(server.socket, buffer, 255, from);
 
         switch (buffer[0])
         {

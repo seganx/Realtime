@@ -1,101 +1,72 @@
 ﻿using UnityEngine;
 using System.Net;
-
+using SeganX.Plankton;
 
 public class Test : MonoBehaviour
 {
-    [SerializeField] private Player player = null;
-
-    private byte[] buffer = new byte[256];
+    public string serverAddress = "79.175.133.132:31000";
 
     private void Start()
     {
         Application.runInBackground = true;
-        Network.ServerAddress.Address = new IPAddress(new byte[] { 79, 175, 133, 132 });
-        Network.ServerAddress.Port = 31000;
-
-        var b = new BufferWriter(100);
-        b.AppendString("Hello");
-        b.AppendVector3(new Vector3(20, 10, 30));
-
-        var r = new BufferReader(b.Bytes);
-        Debug.Log(r.ReadString());
-        Debug.Log(r.ReadVector3());
+        Plankton.PlayerActiveTimeout = 5;
+        Plankton.PlayerDestoryTimeout = 20;
+        Plankton.OnPlayerConnected += Player.CreatePlayer;
+        Plankton.OnPlayerDestroyed += Player.DestroyPlayer;
     }
 
-    private void OnApplicationQuit()
+    private void OnDisable()
     {
-        Network.End();
-    }
-
-    private void Update()
-    {
-        player.id = Network.PlayerId;
-
-        int senderId = -1;
-        int received = Network.Receive(ref senderId, buffer);
-        if (received > 0)
-        {
-            Player.Received(senderId, buffer);
-#if UNITY_EDITOR
-            var str = "Received from " + senderId + " : ";
-            for (int i = 0; i < received; i++)
-                str += " " + buffer[i];
-            Debug.Log(str);
-#endif
-        }
+        Plankton.Disconnect();
+        Plankton.OnPlayerConnected -= Player.CreatePlayer;
+        Plankton.OnPlayerDestroyed -= Player.DestroyPlayer;
     }
 
     void OnGUI()
     {
         Rect rect = new Rect(10, 10, 150, 30);
-        GUI.Label(rect, "Connection: " + Network.Connected);
+        GUI.Label(rect, "Connection: " + Plankton.IsConnected);
         rect.y += 20;
-        GUI.Label(rect, "Ping: " + Network.Ping);
+        GUI.Label(rect, "Ping: " + Plankton.Ping);
 
         rect.y += 30;
         if (GUI.Button(rect, "Start"))
 #if UNITY_STANDALONE_WIN
-            Network.Start(System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
+            Plankton.Connect(serverAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
 #else
-            Network.Start(System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
+            Plankton.Start(serverAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
 #endif
 
         rect.y += 40;
         if (GUI.Button(rect, "End"))
-            Network.End();
+            Plankton.Disconnect();
 
-#if UNITY_STANDALONE_WIN
-        if (Input.GetKey(KeyCode.UpArrow))
-            player.transform.position += Vector3.up * 0.01f;
-        if (Input.GetKey(KeyCode.DownArrow))
-            player.transform.position += Vector3.down * 0.01f;
-        if (Input.GetKey(KeyCode.LeftArrow))
-            player.transform.position += Vector3.left * 0.01f;
-        if (Input.GetKey(KeyCode.RightArrow))
-            player.transform.position += Vector3.right * 0.01f;
-#else
+#if !UNITY_STANDALONE_WIN
         rect.y += 80;
         rect.width = 40;
         if (GUI.Button(rect, "up"))
-            player.transform.position += Vector3.up * 0.2f;
+            Player.mine.Position += Vector3.up * 0.2f;
 
         rect.y += 40;
         if (GUI.Button(rect, "left"))
-            player.transform.position += Vector3.left * 0.2f;
+            Player.mine.Position += Vector3.left * 0.2f;
 
         rect.x += 50;
         if (GUI.Button(rect, "right"))
-            player.transform.position += Vector3.right * 0.2f;
+            Player.mine.Position += Vector3.right * 0.2f;
         rect.x -=  50;
 
         rect.y += 40;
         if (GUI.Button(rect, "down"))
-            player.transform.position += Vector3.down * 0.2f;
+            Player.mine.Position += Vector3.down * 0.2f;
 #endif
         rect.y += 40;
-        if (GUI.Button(rect, "color"))
-            player.ChangeColor(++player.colorIndex);
+        if (GUI.Button(rect, "Color"))
+            Player.mine.ChangeColor(-1);
+
+        rect.y += 40;
+        if (GUI.Button(rect, "Stop Send"))
+            Player.stopSend = !Player.stopSend;
 
     }
 

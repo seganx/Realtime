@@ -13,6 +13,7 @@
 #define DEVICE_LEN      32
 #define THREAD_COUNTS   32
 #define ADDRESS_LEN     32
+#define DATA_MAXLEN     230
 
 struct Player
 {

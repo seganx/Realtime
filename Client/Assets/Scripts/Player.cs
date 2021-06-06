@@ -1,24 +1,39 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using SeganX.Plankton;
 
 public class Player : MonoBehaviour
 {
     public enum MessageType : byte { Info = 1, Position = 2 }
 
-    public int id = 0;
-    public byte colorIndex = 0;
+    private NetPlayer netPlayer;
+    private byte colorIndex = 0;
 
-    public NetPlayer netPlayer = null;
+    public float speed = 2;
 
-    private void OnEnable()
+    public Vector3 Position { get; set; }
+
+    public Player Setup(NetPlayer player)
     {
-        players.Add(this);
-    }
+        netPlayer = player;
+        netPlayer.OnReceived = buffer =>
+        {
+            var type = (MessageType)buffer.ReadByte();
+            switch (type)
+            {
+                case MessageType.Position:
+                    Position = buffer.ReadVector3();
+                    break;
 
-    private void OnDestroy()
-    {
-        players.Remove(this);
+                case MessageType.Info:
+                    colorIndex = buffer.ReadByte();
+                    ChangeColor(colorIndex);
+                    break;
+            }
+        };
+
+        return this;
     }
 
     private void Start()
@@ -28,82 +43,100 @@ public class Player : MonoBehaviour
         StartCoroutine(SendInfo());
     }
 
+    private void Update()
+    {
+        if (netPlayer.IsMine || Vector3.Distance(transform.position, Position) < 2)
+            transform.position = Vector3.Lerp(transform.position, Position, Time.deltaTime * 5);
+        else
+            transform.position = Position;
+
+#if UNITY_STANDALONE_WIN
+        if (netPlayer.IsMine)
+        {
+            if (Input.GetKey(KeyCode.UpArrow))
+                Position += Vector3.up * Time.deltaTime * speed;
+            if (Input.GetKey(KeyCode.DownArrow))
+                Position += Vector3.down * Time.deltaTime * speed;
+            if (Input.GetKey(KeyCode.LeftArrow))
+                Position += Vector3.left * Time.deltaTime * speed;
+            if (Input.GetKey(KeyCode.RightArrow))
+                Position += Vector3.right * Time.deltaTime * speed;
+        }
+#endif
+    }
+
     private IEnumerator SendPosition()
     {
         BufferWriter buffer = new BufferWriter(128);
         var wait = new WaitForSeconds(0.1f);
-        while (Network.PlayerId == id)
+        while (netPlayer.IsMine)
         {
+            yield return wait;
+            if (stopSend) continue;
             buffer.Reset();
             buffer.AppendByte((byte)MessageType.Position);
             buffer.AppendFloat(transform.position.x);
             buffer.AppendFloat(transform.position.y);
             buffer.AppendFloat(transform.position.z);
-            Network.Send(Network.SendType.Other, buffer);
-            yield return wait;
+            netPlayer.Send(SendType.Other, buffer);
         }
-    }
-
-    private void ReceivedPosition(byte[] buffer)
-    {
-        float[] position = { 0, 0, 0 };
-        System.Buffer.BlockCopy(buffer, 1, position, 0, 12);
-        transform.position = new Vector3(position[0], position[1], position[2]);
     }
 
     private IEnumerator SendInfo()
     {
         BufferWriter buffer = new BufferWriter(128);
         var wait = new WaitForSeconds(1);
-        while (Network.PlayerId == id)
+        while (true)
         {
-            buffer.Reset();
-            buffer.AppendByte((byte)MessageType.Info);
-            buffer.AppendByte(colorIndex);
-            Network.Send(Network.SendType.Other, buffer);
             yield return wait;
-        }
-    }
+            if (stopSend) continue;
 
-    private void ReceivedInfo(byte[] buffer)
-    {
-        colorIndex = buffer[1];
-        ChangeColor(colorIndex);
+            if (netPlayer.IsMine)
+            {
+                buffer.Reset();
+                buffer.AppendByte((byte)MessageType.Info);
+                buffer.AppendByte(colorIndex);
+                netPlayer.Send(SendType.Other, buffer);
+            }
+            else
+            {
+                if (netPlayer.IsActive)
+                    ChangeColor(colorIndex);
+                else
+                    GetComponent<MeshRenderer>().material.color = Color.black;
+            }
+        }
     }
 
     public void ChangeColor(int index)
     {
+        if (index < 0) index = ++colorIndex;
         GetComponent<MeshRenderer>().material.color = colors[index % colors.Length];
     }
 
     //////////////////////////////////////////////////////
     /// STATIC MEMBERS
     //////////////////////////////////////////////////////
-    private static readonly List<Player> players = new List<Player>();
-    private static Color[] colors = { Color.green, Color.blue, Color.red, Color.cyan, Color.gray };
+    private static readonly Color[] colors = { Color.green, Color.blue, Color.red, Color.cyan, Color.gray, Color.magenta, Color.yellow, Color.white };
 
-    public static void Received(int senderId, byte[] buffer)
-    {
-        var player = players.Find(x => x.id == senderId);
+    public static Player mine = null;
+    public static readonly List<Player> all = new List<Player>(32);
+    public static bool stopSend = false;
 
-        if (player == null)
-        {
-            player = Create(senderId);
-        }
-
-        var type = (MessageType)buffer[0];
-        switch (type)
-        {
-            case MessageType.Info: player.ReceivedInfo(buffer); break;
-            case MessageType.Position: player.ReceivedPosition(buffer); break;
-        }
-    }
-
-    private static Player Create(int id)
+    public static void CreatePlayer(NetPlayer netPlayer)
     {
         var prefab = Resources.Load<Player>("Game/Player");
-        var player = Instantiate(prefab).GetComponent<Player>();
-        player.id = id;
-        return player;
+        var res = Instantiate(prefab).GetComponent<Player>().Setup(netPlayer);
+        all.Add(res);
+        if (netPlayer.IsMine)
+            mine = res;
+    }
+
+    public static void DestroyPlayer(NetPlayer player)
+    {
+        var candid = all.Find(x => x.netPlayer == player);
+        if (candid == null) return;
+        all.Remove(candid);
+        Destroy(candid.gameObject);
     }
 }
