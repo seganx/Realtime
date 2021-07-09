@@ -5,6 +5,7 @@ using SeganX.Plankton;
 public class Test : MonoBehaviour
 {
     public string serverAddress = "79.175.133.132:31000";
+    public string testAddress = "127.0.0.1:35000";
 
     private void Start()
     {
@@ -32,7 +33,7 @@ public class Test : MonoBehaviour
         rect.y += 30;
         if (GUI.Button(rect, "Start"))
 #if UNITY_STANDALONE_WIN
-            Plankton.Connect(serverAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
+            Plankton.Connect(testAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
 #else
             Plankton.Start(serverAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
 #endif
@@ -40,6 +41,32 @@ public class Test : MonoBehaviour
         rect.y += 40;
         if (GUI.Button(rect, "End"))
             Plankton.Disconnect();
+
+        rect.y += 40;
+        if (GUI.Button(rect, "Get Rooms"))
+            Plankton.GetRooms(0, 10, true, (count, rooms) =>
+            {
+                string str = $"Rooms: Count[{count}] - Rooms: ";
+                for (int i = 0; i < count; i++)
+                    str += rooms[i] + " ";
+                Debug.Log(str);
+            });
+
+
+        rect.y += 40;
+        if (GUI.Button(rect, "Join Room 0"))
+            Plankton.JoinRoom(0, (roomid, playerid) =>
+            {
+                Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]");
+            });
+
+        rect.y += 40;
+        if (GUI.Button(rect, "Leave Room"))
+            Plankton.LeaveRoom(() =>
+            {
+                Debug.Log($"Leaved room");
+            });
+
 
 #if !UNITY_STANDALONE_WIN
         rect.y += 80;

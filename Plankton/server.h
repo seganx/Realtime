@@ -15,12 +15,13 @@
 #define ADDRESS_LEN     32
 #define DATA_MAXLEN     230
 
+
 struct Player
 {
-    byte from[ADDRESS_LEN];
-    uint token;
-    char device[DEVICE_LEN];
-    long active_time;
+    byte    from[ADDRESS_LEN];
+    uint    token;
+    char    device[DEVICE_LEN];
+    uint4   active_time;
 };
 
 struct Room
@@ -32,9 +33,9 @@ struct Room
 
 struct Config
 {
-    uint port;
-    uint room_capacity;
-    uint player_timeout;
+    uint2 port;
+    uint2 room_capacity;
+    uint2 player_timeout;
 };
 
 struct Server
@@ -68,11 +69,11 @@ struct Login
 
 struct LoginResponse
 {
-    byte type;
-    word room;
-    byte player;
-    uint token;
-    uint checksum;
+    uint1 type;
+    uint2 room;
+    uint1 player;
+    uint4 token;
+    uint4 checksum;
 };
 
 struct Logout

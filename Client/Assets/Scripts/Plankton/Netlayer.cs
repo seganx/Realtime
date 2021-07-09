@@ -15,16 +15,21 @@ namespace SeganX.Plankton
     {
         public class Netlayer
         {
+            public const int tryDelayFactor = 1;
+
             private const byte packetTypePing = 1;
             private const byte packetTypeLogin = 2;
             private const byte packetTypeLogout = 3;
-            private const byte packetTypeMessage = 4;
-            private const byte packetTypeExpired = 5;
+            private const byte packetTypeExpired = 4;
+            private const byte packetTypeRooms = 5;
+            private const byte packetTypeJoin = 6;
+            private const byte packetTypeLeave = 7;
+            private const byte packetTypeMessage = 20;
 
             private uint token  = 0;
             private float aliveTime = -10;
             private byte[] device = null;
-            private readonly BufferReader receivedBuffer = new BufferReader(256);
+            private readonly BufferReader receivedBuffer = new BufferReader(2048);
             private readonly BufferWriter loginBuffer = new BufferWriter(64);
             private readonly BufferWriter sendBuffer = new BufferWriter(256);
             private readonly BufferWriter pingBuffer = new BufferWriter(16);
@@ -35,9 +40,15 @@ namespace SeganX.Plankton
 
             public IPEndPoint ServerAddress = new IPEndPoint(0, 0);
             public long Ping { get; private set; } = 0;
-            public byte PlayerId { get; private set; } = 0;
-            public ushort RoomId { get; private set; } = 0;
-            public bool Connected => DeathTime < 5.0f;
+            public short LobbyId { get; private set; } = -1;
+            public short RoomId { get; private set; } = -1;
+            public sbyte PlayerId { get; private set; } = -1;
+            public bool Connected => DeathTime < 5.0f * tryDelayFactor;
+
+            public System.Action OnLoggedIn = null;
+            public System.Action<byte, byte[]> OnRoomsReceived = null;
+            public System.Action<short, sbyte> OnJoinRoom = null;
+            public System.Action OnLeaveRoom = null;
 
             public void Start(byte[] devicebytes)
             {
@@ -53,7 +64,7 @@ namespace SeganX.Plankton
                     return;
                 }
 
-                socket.Open(32000, 35000);
+                socket.Open(31001, 34999);
                 device = devicebytes;
                 aliveTime = -10;
                 Login();
@@ -65,14 +76,16 @@ namespace SeganX.Plankton
                 if (device == null) return;
                 sendBuffer.Reset();
                 sendBuffer.AppendByte(packetTypeLogout);
-                sendBuffer.AppendUshort(RoomId);
-                sendBuffer.AppendByte(PlayerId);
                 sendBuffer.AppendUint(token);
+                sendBuffer.AppendShort(LobbyId);
+                sendBuffer.AppendShort(RoomId);
+                sendBuffer.AppendSbyte(PlayerId);
                 sendBuffer.AppendUint(ComputeChecksum(sendBuffer.Bytes, sendBuffer.Length));
                 socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
 
                 Ping = 0;
                 token = 0;
+                LobbyId = RoomId = PlayerId = -1;
                 device = null;
                 aliveTime = -10;
                 socket.Close();
@@ -102,8 +115,47 @@ namespace SeganX.Plankton
                     pingBuffer.AppendByte(packetTypePing);
                     pingBuffer.AppendLong(Ticks);
                     socket.Send(ServerAddress, pingBuffer.Bytes, pingBuffer.Length);
-                    await Task.Delay(700);
+                    await Task.Delay(700 * tryDelayFactor);
                 }
+            }
+
+            public void GetRooms(short startRoomIndex, byte count, bool excludeFullRooms)
+            {
+                if (device == null || token == 0) return;
+
+                sendBuffer.Reset();
+                sendBuffer.AppendByte(packetTypeRooms);
+                sendBuffer.AppendUint(token);
+                sendBuffer.AppendShort(LobbyId);
+                sendBuffer.AppendByte(excludeFullRooms ? (byte)1 : (byte)0);
+                sendBuffer.AppendShort(startRoomIndex);
+                sendBuffer.AppendByte(count);
+                socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
+            }
+
+            public void JoinRoom(short roomIndex = -1)
+            {
+                if (device == null || token == 0) return;
+
+                sendBuffer.Reset();
+                sendBuffer.AppendByte(packetTypeJoin);
+                sendBuffer.AppendUint(token);
+                sendBuffer.AppendShort(LobbyId);
+                sendBuffer.AppendShort(roomIndex);
+                socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
+            }
+
+            public void LeaveRoom()
+            {
+                if (device == null || token == 0) return;
+
+                sendBuffer.Reset();
+                sendBuffer.AppendByte(packetTypeLeave);
+                sendBuffer.AppendUint(token);
+                sendBuffer.AppendShort(LobbyId);
+                sendBuffer.AppendShort(RoomId);
+                sendBuffer.AppendSbyte(PlayerId);
+                socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
             }
 
             public void Send(SendType type, BufferWriter data, byte otherId = 0)
@@ -125,15 +177,15 @@ namespace SeganX.Plankton
 
                 sendBuffer.Reset();
                 sendBuffer.AppendByte(packetTypeMessage);
-                sendBuffer.AppendUshort(RoomId);
-                sendBuffer.AppendByte(PlayerId);
                 sendBuffer.AppendUint(token);
+                sendBuffer.AppendShort(LobbyId);
+                sendBuffer.AppendShort(RoomId);
+                sendBuffer.AppendSbyte(PlayerId);
                 sendBuffer.AppendByte(otherId);
                 sendBuffer.AppendByte(option);
                 sendBuffer.AppendByte((byte)data.Length);
                 sendBuffer.AppendBytes(data.Bytes, data.Length);
                 socket.Send(ServerAddress, sendBuffer.Bytes, sendBuffer.Length);
-
             }
 
             public int Receive(ref int sender, byte[] destBuffer)
@@ -155,25 +207,51 @@ namespace SeganX.Plankton
 
                     case packetTypeLogin:
                         {
-                            var roomId = receivedBuffer.ReadUshort();
-                            var playerId = receivedBuffer.ReadByte();
                             var rectoken = receivedBuffer.ReadUint();
+                            var reclobby = receivedBuffer.ReadShort();  
                             var checksum = receivedBuffer.ReadUint();
-                            if (checksum == ComputeChecksum(receivedBuffer.Bytes, 8))
+                            if (checksum == ComputeChecksum(receivedBuffer.Bytes, 7))
                             {
                                 token = rectoken;
-                                RoomId = roomId;
-                                sender = PlayerId = playerId;
+                                LobbyId = reclobby;
+                                OnLoggedIn?.Invoke();
                             }
                             return 0;
                         }
 
+                    case packetTypeRooms:
+                        {
+                            var roomCount = receivedBuffer.ReadByte();
+                            receivedBuffer.ReadBytes(destBuffer, roomCount);
+                            OnRoomsReceived?.Invoke(roomCount, destBuffer);
+                            return 0;
+                        }
+
+                    case packetTypeJoin:
+                        {
+                            RoomId = receivedBuffer.ReadShort();
+                            PlayerId = receivedBuffer.ReadSbyte();
+                            OnJoinRoom?.Invoke(RoomId, PlayerId);
+                            sender = PlayerId;
+                            return 0;
+                        }
+
+                    case packetTypeLeave:
+                        {
+                            RoomId = -1;
+                            PlayerId = -1;
+                            OnLeaveRoom?.Invoke();
+                            return 0;
+                        }
+
                     case packetTypeMessage:
+                        if (token > 0)
                         {
                             sender = receivedBuffer.ReadByte();
                             receivedBuffer.ReadBytes(destBuffer, packsize - 2);
                             return packsize - 2;
                         }
+                        break;
 
                     case packetTypeExpired:
                         {

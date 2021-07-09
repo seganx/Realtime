@@ -13,14 +13,13 @@
 //  basic type definitions
 //////////////////////////////////////////////////////////////////////////
 
-typedef signed char				sint1, sint08, sbyte;
-typedef unsigned char		    uint1, uint08, byte;
-typedef signed short		    sint2, sint16;
-typedef unsigned short		    uint2, uint16, ushort, word, wchar;
-typedef signed long				sint4, sint32, sint;
-typedef unsigned long		    uint4, uint32, uint, dword;
-typedef signed long long		sint8, sint64;
-typedef unsigned long long		uint8, uint64;
+typedef signed char				sbyte;
+typedef unsigned char		    byte;
+typedef unsigned short		    ushort, wchar;
+typedef signed long			    sint;
+typedef unsigned long		    uint, dword;
+typedef long long			    int64;
+typedef unsigned long long		ulong, uint64;
 typedef void*                   handle;
 typedef int					    hresult;
 

@@ -238,6 +238,18 @@ int main()
         char t[64] = { 0 };
         sx_time_print(t, 64, sx_time_now());
         sx_print("Server started on %s", t);
+
+        sx_print("Size of i8: %llu", sizeof(sint1));
+        sx_print("Size of u8: %llu", sizeof(uint1));
+        sx_print("Size of i16: %llu", sizeof(sint2));
+        sx_print("Size of u16: %llu", sizeof(uint2));
+        sx_print("Size of i32: %llu", sizeof(sint4));
+        sx_print("Size of u32: %llu", sizeof(uint4));
+        sx_print("Size of i64: %llu", sizeof(sint8));
+        sx_print("Size of u64: %llu", sizeof(uint8));
+        sx_print("Size of sx_time: %llu", sizeof(sx_time));
+        sx_print("Size of size_t: %llu", sizeof(size_t));
+        sx_print("Size of time_t: %llu", sizeof(time_t));
     }
 
     struct sx_thread* threads[THREAD_COUNTS] = { null };
