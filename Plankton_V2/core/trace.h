@@ -96,9 +96,9 @@ SEGAN_LIB_API void trace_pop(void);
 extern "C" {
 #endif // __cplusplus
 
-SEGAN_LIB_API void* trace_mem_alloc(const size_t size_in_byte, const char* file, const int line);
-SEGAN_LIB_API void* trace_mem_calloc(const size_t size_in_byte, const char* file, const int line);
-SEGAN_LIB_API void* trace_mem_realloc(void* p, const size_t new_size_in_byte, const char* file, const int line);
+SEGAN_LIB_API void* trace_mem_alloc(const uint size_in_byte, const char* file, const int line);
+SEGAN_LIB_API void* trace_mem_calloc(const uint size_in_byte, const char* file, const int line);
+SEGAN_LIB_API void* trace_mem_realloc(void* p, const uint new_size_in_byte, const char* file, const int line);
 SEGAN_LIB_API void* trace_mem_free(const void* p);
 
 #ifdef __cplusplus

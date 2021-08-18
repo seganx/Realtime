@@ -266,7 +266,7 @@ static void trace_mem_report(FILE* f, bool only_corrupted)
     }
 }
 
-SEGAN_LIB_INLINE void* trace_mem_alloc(const size_t size_in_byte, const char* file, const int line)
+SEGAN_LIB_INLINE void* trace_mem_alloc(const uint size_in_byte, const char* file, const int line)
 {
     void* res = null;
 
@@ -299,7 +299,7 @@ SEGAN_LIB_INLINE void* trace_mem_alloc(const size_t size_in_byte, const char* fi
 }
 
 
-SEGAN_LIB_API void* trace_mem_calloc(const size_t size_in_byte, const char* file, const int line)
+SEGAN_LIB_API void* trace_mem_calloc(const uint size_in_byte, const char* file, const int line)
 {
     void* res = trace_mem_alloc(size_in_byte, file, line);
     mem_set(res, 0, size_in_byte);
@@ -307,7 +307,7 @@ SEGAN_LIB_API void* trace_mem_calloc(const size_t size_in_byte, const char* file
 }
 
 
-SEGAN_LIB_INLINE void* trace_mem_realloc(void* p, const size_t new_size_in_byte, const char* file, const int line)
+SEGAN_LIB_INLINE void* trace_mem_realloc(void* p, const uint new_size_in_byte, const char* file, const int line)
 {
     if (!new_size_in_byte)
         return trace_mem_free(p);

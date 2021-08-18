@@ -12,7 +12,7 @@ Login
 Login response
 1 	type = 2
 4	token
-2	lobby id
+2	id
 4	checksum
 
 ===============
@@ -20,69 +20,72 @@ Login response
 Logout 
 1 	type = 3 
 4	token
-2	lobby id
-2	room id
-1	player id
+2	id
+2	room
+1	index
 4	checksum
 
 ===============
 
-Expired response
-1	type = 4
-
-===============
-
 Rooms
-1	type = 5
+1	type = 4
 4	token
-2	lobby id
+2	id
 1	option - all = 0, ignore full room = 1
 2	start index
 1	count
 
 Rooms response
-1	type = 5
+1	type = 4
 1	room count
 1[] player count
 
 ===============
 
 Join
-1	type = 6
+1	type = 5
 4	token
-2	lobby id
-2	room id	- auto = -1
+2	id
+2	room - auto = -1
 
 Join response
-1	type = 6
-2	room id
-1	player id
+1	type = 5
+2	room
+1	index
 
 ===============
 
 Leave
-1	type = 7
+1	type = 6
 4	token
-2	lobby id
-2	room id
-1	player id
+2	id
+2	room
+1	index
 
 Leave response
-1	type = 7
+1	type = 6
 
 ===============
 
 Message
 1 	type = 20
 4	token
-2	lobby id
-2 	room id
-1	player id
-1  	other player id
+2	id
+2 	room
+1	index
+1  	other player index
 1 	options - to all = 1, to others = 2, to player = 3, reliable
 1 	data size
 ...
 230	max data size
+
+=============== errors
+
+Expired response
+1	type = 30
+
+Server full response
+1	type = 31
 
 
 _______________________________________________________________________

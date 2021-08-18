@@ -5,11 +5,13 @@
 #define TYPE_PING           1
 #define TYPE_LOGIN          2
 #define TYPE_LOGOUT         3
-#define TYPE_EXPIRED        4
-#define TYPE_ROOMS          5
-#define TYPE_JOIN           6
-#define TYPE_LEAVE          7
+#define TYPE_ROOMS          4
+#define TYPE_JOIN           5
+#define TYPE_LEAVE          6
 #define TYPE_MESSAGE        20
+#define TYPE_ERR_EXPIRED    30
+#define TYPE_ERR_IS_FULL    31
+
 #define DEVICE_LEN          32
 #define THREAD_COUNTS       32
 #define ADDRESS_LEN         32
@@ -20,13 +22,13 @@
 
 typedef struct Player
 {
-    byte    from[ADDRESS_LEN];
     char    device[DEVICE_LEN];
+    byte    from[ADDRESS_LEN];
     uint    token;
-    short   lobby;
+    ulong   active_time;
+    short   id;
     short   room;
     sbyte   index;
-    ulong   active_time;
 }
 Player;
 
@@ -41,7 +43,7 @@ typedef struct Room
 {
     sbyte   count;
     sbyte   capacity;
-    short   players[ROOM_PLAYER_COUNT];
+    Player* players[ROOM_PLAYER_COUNT];
 }
 Room;
 
@@ -87,7 +89,7 @@ typedef struct LoginResponse
 {
     byte    type;
     uint    token;
-    short   lobby;
+    short   id;
     uint    checksum;
 }
 LoginResponse;
@@ -96,24 +98,18 @@ typedef struct Logout
 {
     byte    type;
     uint    token;
-    short   lobby;
+    short   id;
     short   room;
     sbyte   index;
     uint    checksum;
 }
 Logout;
 
-typedef struct ExpiredResponse
-{
-    byte    type;
-}
-ExpiredResponse;
-
 typedef struct Rooms
 {
     byte    type;
     uint    token;
-    short   lobby;
+    short   id;
     byte    option;
     short   start;
     byte    count;
@@ -132,7 +128,7 @@ typedef struct Join
 {
     byte    type;
     uint    token;
-    short   lobby;
+    short   id;
     short   room;
 }
 Join;
@@ -149,7 +145,7 @@ typedef struct Leave
 {
     byte    type;
     uint    token;
-    short   lobby;
+    short   id;
     short   room;
     sbyte   index;
 }
@@ -165,7 +161,7 @@ typedef struct Packet
 {
     byte    type;
     uint    token;
-    short   lobby;
+    short   id;
     short   room;
     sbyte   index;
     byte    option;
@@ -173,4 +169,11 @@ typedef struct Packet
     byte    datasize;
 }
 Packet;
+
+typedef struct ErrorResponse
+{
+    byte    type;
+}
+ErrorResponse;
+
 #pragma pack(pop)
