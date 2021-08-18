@@ -1,0 +1,62 @@
+Connection
+	device id
+	player id
+	ip address
+	send time
+
+Ping
+1 	type = 1
+2	port
+
+Login
+1 	type = 2
+2	port
+32	device id
+4	checksum
+
+Logout 
+1 	type = 3 
+2	room id
+1	player id
+4	token
+4	checksum
+
+Message
+1 	type = 4
+2	port
+2 	room id
+1	player id
+4	token
+1  	other player id
+1 	options - to all = 1, to others = 2, to player = 3, reliable
+1 	data size
+...
+230	max data size
+
+===============
+
+Ping response
+1 	type = 1
+4	server time
+
+Login response
+1 	type = 2
+2	room id
+1	player id
+4	token
+4	checksum
+
+
+
+
+
+_______________________________________________________________________
+
+
+Network
+start
+end
+send
+receive
+
+
