@@ -8,9 +8,13 @@
 #define TYPE_ROOMS          4
 #define TYPE_JOIN           5
 #define TYPE_LEAVE          6
-#define TYPE_MESSAGE        20
-#define TYPE_ERR_EXPIRED    30
-#define TYPE_ERR_IS_FULL    31
+#define TYPE_PACKET_RELY    20
+#define TYPE_PACKET_RELIED  21
+#define TYPE_PACKET_UNRELY  22
+
+#define ERR_INVALID         -1
+#define ERR_EXPIRED         -2
+#define ERR_IS_FULL         -3
 
 #define DEVICE_LEN          32
 #define THREAD_COUNTS       32
@@ -73,6 +77,10 @@ Server;
 typedef struct Ping
 {
     byte    type;
+    uint    token;
+    short   id;
+    short   room;
+    sbyte   index;
     ulong   time;
 }
 Ping;
@@ -88,6 +96,7 @@ Login;
 typedef struct LoginResponse
 {
     byte    type;
+    sbyte   error;
     uint    token;
     short   id;
     uint    checksum;
@@ -119,6 +128,7 @@ Rooms;
 typedef struct RoomsResponse
 {
     byte    type;
+    sbyte   error;
     byte    count;
     sbyte   players[256];
 }
@@ -136,6 +146,7 @@ Join;
 typedef struct JoinResponse
 {
     byte    type;
+    sbyte   error;
     short   room;
     sbyte   player;
 }
@@ -154,25 +165,47 @@ Leave;
 typedef struct LeaveResponse
 {
     byte    type;
+    sbyte   error;
 }
 LeaveResponse;
 
-typedef struct Packet
+typedef struct PacketUnrelibale
 {
     byte    type;
     uint    token;
     short   id;
     short   room;
     sbyte   index;
-    byte    option;
-    sbyte   other;
+    sbyte   target;
     byte    datasize;
 }
-Packet;
+PacketUnreliable;
+
+typedef struct PacketRelibale
+{
+    byte    type;
+    uint    token;
+    short   id;
+    short   room;
+    sbyte   index;
+    sbyte   target;
+    byte    ack;
+    byte    datasize;
+}
+PacketReliable;
+
+typedef struct PacketResponse
+{
+    byte    type;
+    sbyte   sender;
+    byte*   data;
+}
+PacketResponse;
 
 typedef struct ErrorResponse
 {
     byte    type;
+    sbyte   error;
 }
 ErrorResponse;
 

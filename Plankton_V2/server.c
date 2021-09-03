@@ -91,22 +91,37 @@ void server_send(const byte* address, const void* buffer, const int size)
     sx_socket_send_in(server.socket, (const struct sockaddr*)address, buffer, size);
 }
 
-void server_ping(byte* buffer, const byte* from)
+void server_send_error(const byte* from, const byte type, const sbyte error)
 {
-    server_send(from, buffer, sizeof(Ping));
+    ErrorResponse response = { type, error };
+    server_send(from, &response, sizeof(ErrorResponse));
 }
 
-void server_send_error(const byte* from, byte type)
+void server_ping(byte* buffer, const byte* from)
 {
-    ErrorResponse response = { type };
-    server_send(from, &response, sizeof(ErrorResponse));
+    Ping* ping = (Ping*)buffer;
+
+    Player* player = lobby_get_player_validate_all(&server, ping->token, ping->id, ping->room, ping->index);
+    if (player == null)
+    {
+        server_send_error(from, TYPE_PING, ERR_EXPIRED);
+        return;
+    }
+
+    sx_mutex_lock(server.mutex_lobby);
+    sx_mem_copy(player->from, from, ADDRESS_LEN);
+    player->active_time = sx_time_now();
+    sx_mutex_unlock(server.mutex_lobby);
+
+    ping->token = 0; // means no error
+    server_send(from, ping, sizeof(Ping));
 }
 
 void server_process_login(byte* buffer, const byte* from)
 {
     if (server.lobby.count >= LOBBY_PLAYER_COUNT)
     {
-        server_send_error(from, TYPE_ERR_IS_FULL);
+        server_send_error(from, TYPE_LOGIN, ERR_IS_FULL);
         return;
     }
 
@@ -122,25 +137,36 @@ void server_process_login(byte* buffer, const byte* from)
     }
     if (player == null)
     {
-        server_send_error(from, TYPE_ERR_IS_FULL);
+        server_send_error(from, TYPE_LOGIN, ERR_IS_FULL);
         return;
     }
 
-    LoginResponse response = { TYPE_LOGIN };
-    response.token = player->token;
-    response.id = player->id;
+    LoginResponse response = { TYPE_LOGIN, 0, player->token, player->id };
     response.checksum = checksum_compute((const byte*)&response, sizeof(LoginResponse) - sizeof(uint));
     server_send(from, &response, sizeof(LoginResponse));
 }
 
-void server_process_logout(byte* buffer)
+void server_process_logout(byte* buffer, const byte* from)
 {
     Logout* logout = (Logout*)buffer;
-    if (validate_player_id_range(logout->id) == false) return;
-    if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum)) return;
+    if (validate_player_id_range(logout->id) == false)
+    {
+        server_send_error(from, TYPE_LOGOUT, 0);
+        return;
+    }
+
+    if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum))
+    {
+        server_send_error(from, TYPE_LOGOUT, 0);
+        return;
+    }
 
     Player* player = lobby_get_player_validate_all(&server, logout->token, logout->id, logout->room, logout->index);
-    if (player == null) return;
+    if (player == null)
+    {
+        server_send_error(from, TYPE_LOGOUT, 0);
+        return;
+    }
 
     sx_mutex_lock(server.mutex_room);
     room_remove_player(&server, player);
@@ -149,6 +175,8 @@ void server_process_logout(byte* buffer)
     sx_mutex_lock(server.mutex_lobby);
     lobby_remove_player(&server, logout->id);
     sx_mutex_unlock(server.mutex_lobby);
+
+    server_send_error(from, TYPE_LOGOUT, 0);
 }
 
 void server_process_rooms(byte* buffer, const byte* from)
@@ -158,7 +186,7 @@ void server_process_rooms(byte* buffer, const byte* from)
 
     if (lobby_get_player_validate_token(&server, rooms->token, rooms->id) == null)
     {
-        server_send_error(from, TYPE_ERR_EXPIRED);
+        server_send_error(from, TYPE_ROOMS, ERR_EXPIRED);
         return;
     }
 
@@ -180,7 +208,7 @@ void server_process_join(byte* buffer, const byte* from)
     Player* player = lobby_get_player_validate_token(&server, join->token, join->id);
     if (player == null)
     {
-        server_send_error(from, TYPE_ERR_EXPIRED);
+        server_send_error(from, TYPE_JOIN, ERR_EXPIRED);
         return;
     }
 
@@ -194,7 +222,13 @@ void server_process_join(byte* buffer, const byte* from)
     }
     sx_mutex_unlock(server.mutex_room);
 
-    JoinResponse response = { TYPE_JOIN, player->room, player->index };
+    if (player->room < 0)
+    {
+        server_send_error(from, TYPE_JOIN, ERR_IS_FULL);
+        return;
+    }
+
+    JoinResponse response = { TYPE_JOIN, 0, player->room, player->index };
     server_send(from, &response, sizeof(JoinResponse));
 }
 
@@ -209,76 +243,98 @@ void server_process_leave(byte* buffer, const byte* from)
         room_remove_player(&server, player);
         sx_mutex_unlock(server.mutex_room);
     }
-    else return;
+    else
+    {
+        server_send_error(from, TYPE_LEAVE, ERR_EXPIRED);
+        return;
+    }
 
-    LeaveResponse response = { TYPE_LEAVE };
+    LeaveResponse response = { TYPE_LEAVE, 0 };
     server_send(from, &response, sizeof(LeaveResponse));
 }
 
 
-void server_process_packet(byte* buffer, const byte* from)
+void server_process_packet_unreliable(byte* buffer, const byte* from)
 {
-    Packet packet;
-    sx_mem_copy(&packet, buffer, sizeof(struct Packet));
+    PacketUnreliable packet;
+    sx_mem_copy(&packet, buffer, sizeof(PacketUnreliable));
     if (validate_player_index_range(packet.index) == false) return;
     if (validate_player_room_id_range(packet.room) == false) return;
 
     Player* player = lobby_get_player_validate_all(&server, packet.token, packet.id, packet.room, packet.index);
     if (player == null)
     {
-        server_send_error(from, TYPE_ERR_EXPIRED);
+        server_send_error(from, TYPE_PACKET_UNRELY, ERR_EXPIRED);
         return;
     }
 
-    sx_mutex_lock(server.mutex_lobby);
-    sx_mem_copy(player->from, from, ADDRESS_LEN);
-    player->active_time = sx_time_now();
-    sx_mutex_unlock(server.mutex_lobby);
-
     Room* room = &server.rooms[packet.room];
-    switch (packet.option)
+    if (packet.target == -1)
     {
-    case 1:
-    {
-        buffer += sizeof(Packet) - 2;
-        buffer[0] = TYPE_MESSAGE;
-        buffer[1] = packet.index;
-        for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
-        {
-            Player* other = room->players[i];
-            if (other->token > 0)
-                server_send(other->from, buffer, packet.datasize + 2);
-        }
-    }
-    break;
-    case 2:
-    {
-        buffer += sizeof(struct Packet) - 2;
-        buffer[0] = TYPE_MESSAGE;
+        int packetsize = packet.datasize + 2;
+        buffer += sizeof(PacketUnreliable) - 2;
+        buffer[0] = TYPE_PACKET_UNRELY;
         buffer[1] = packet.index;
         for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
         {
             if (i == packet.index) continue;
             Player* other = room->players[i];
             if (other->token > 0)
-                server_send(other->from, buffer, packet.datasize + 2);
+                server_send(other->from, buffer, packetsize);
         }
     }
-    break;
-    case 3:
-        if (validate_player_index_range(packet.other))
+    else if (packet.target == -2)
+    {
+        int packetsize = packet.datasize + 2;
+        buffer += sizeof(PacketUnreliable) - 2;
+        buffer[0] = TYPE_PACKET_UNRELY;
+        buffer[1] = packet.index;
+        for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
         {
-            Player* other = room->players[packet.other];
+            Player* other = room->players[i];
             if (other->token > 0)
-            {
-                buffer += sizeof(struct Packet) - 2;
-                buffer[0] = TYPE_MESSAGE;
-                buffer[1] = packet.index;
-                server_send(other->from, buffer, packet.datasize + 2);
-            }
+                server_send(other->from, buffer, packetsize);
         }
-        break;
     }
+    else if (validate_player_index_range(packet.target))
+    {
+        Player* other = room->players[packet.target];
+        if (other->token > 0)
+        {
+            int packetsize = packet.datasize + 2;
+            buffer += sizeof(PacketUnreliable) - 2;
+            buffer[0] = TYPE_PACKET_UNRELY;
+            buffer[1] = packet.index;
+            server_send(other->from, buffer, packetsize);
+        }
+    }
+}
+
+void server_process_packet_reliable(byte type, byte* buffer, const byte* from)
+{
+    PacketReliable packet;
+    sx_mem_copy(&packet, buffer, sizeof(PacketReliable));
+    if (validate_player_index_range(packet.index) == false) return;
+    if (validate_player_room_id_range(packet.room) == false) return;
+    if (validate_player_index_range(packet.target) == false) return;
+
+    Player* player = lobby_get_player_validate_all(&server, packet.token, packet.id, packet.room, packet.index);
+    if (player == null)
+    {
+        server_send_error(from, type, ERR_EXPIRED);
+        return;
+    }
+
+    Room* room = &server.rooms[packet.room];
+    Player* other = room->players[packet.target];
+    if (other->token == 0) return;
+
+    int packetsize = packet.datasize + 3;
+    buffer += sizeof(PacketReliable) - 3;
+    buffer[0] = type;
+    buffer[1] = packet.index;
+    buffer[2] = packet.ack;
+    server_send(other->from, buffer, packetsize);
 }
 
 void server_report(void)
@@ -326,9 +382,11 @@ void thread_listener(void* param)
         switch (buffer[0])
         {
         case TYPE_PING: server_ping(buffer, from); break;
-        case TYPE_MESSAGE: server_process_packet(buffer, from); break;
+        case TYPE_PACKET_UNRELY: server_process_packet_unreliable(buffer, from); break;
+        case TYPE_PACKET_RELY: server_process_packet_reliable(TYPE_PACKET_RELY, buffer, from); break;
+        case TYPE_PACKET_RELIED: server_process_packet_reliable(TYPE_PACKET_RELIED, buffer, from); break;
         case TYPE_LOGIN: server_process_login(buffer, from); break;
-        case TYPE_LOGOUT: server_process_logout(buffer); break;
+        case TYPE_LOGOUT: server_process_logout(buffer, from); break;
         case TYPE_ROOMS: server_process_rooms(buffer, from); break;
         case TYPE_JOIN: server_process_join(buffer, from); break;
         case TYPE_LEAVE: server_process_leave(buffer, from); break;

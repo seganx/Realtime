@@ -1,5 +1,18 @@
 Ping
 1 	type = 1
+4	token
+2	id
+2 	room
+1	index
+8	time
+
+Ping response
+1 	type = 1
+1	error
+3	unused
+2	id
+2 	room
+1	index
 8	time
 
 ===============
@@ -11,6 +24,7 @@ Login
 
 Login response
 1 	type = 2
+1	error
 4	token
 2	id
 4	checksum
@@ -18,12 +32,16 @@ Login response
 ===============
 
 Logout 
-1 	type = 3 
+1 	type = 3
 4	token
 2	id
 2	room
 1	index
 4	checksum
+
+Logout response 
+1 	type = 3
+1	error
 
 ===============
 
@@ -37,6 +55,7 @@ Rooms
 
 Rooms response
 1	type = 4
+1	error
 1	room count
 1[] player count
 
@@ -50,6 +69,7 @@ Join
 
 Join response
 1	type = 5
+1	error
 2	room
 1	index
 
@@ -64,28 +84,51 @@ Leave
 
 Leave response
 1	type = 6
+1	error
 
 ===============
 
-Message
+Message Reliable
 1 	type = 20
 4	token
 2	id
 2 	room
 1	index
-1  	other player index
-1 	options - to all = 1, to others = 2, to player = 3, reliable
+1	target player index
+1	ack number
 1 	data size
-...
-230	max data size
+[]	data
+235	max data size
+
+Message Reliable response
+1 	type = 20
+1 	< 0 ? error : sender index
+1	ack number
+[]	data
+
+===============
+
+Message Unreliable
+1 	type = 21
+4	token
+2	id
+2 	room
+1	index
+1	target - to all = -2, to other = -1, to player >= 0
+1 	data size
+[]	data
+235	max data size
+
+Message Unreliable response
+1 	type = 21
+1 	< 0 ? error : sender index
+[]	data
 
 =============== errors
 
-Expired response
-1	type = 30
-
-Server full response
-1	type = 31
+Invalid = -1
+Expired = -2
+Is Full = -3
 
 
 _______________________________________________________________________
