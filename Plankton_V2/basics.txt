@@ -1,3 +1,15 @@
+BASICS:
+
+Player address/validation
+4	token	: uint
+2	id		: short
+2 	room	: short
+1	index	: sbyte
+
+____________________________
+
+LIST OF MESSAGES:
+
 Ping
 1 	type = 1
 4	token
@@ -8,8 +20,7 @@ Ping
 
 Ping response
 1 	type = 1
-1	error
-3	unused
+4	error
 2	id
 2 	room
 1	index
@@ -88,28 +99,8 @@ Leave response
 
 ===============
 
-Message Reliable
-1 	type = 20
-4	token
-2	id
-2 	room
-1	index
-1	target player index
-1	ack number
-1 	data size
-[]	data
-235	max data size
-
-Message Reliable response
-1 	type = 20
-1 	< 0 ? error : sender index
-1	ack number
-[]	data
-
-===============
-
 Message Unreliable
-1 	type = 21
+1 	type = 20
 4	token
 2	id
 2 	room
@@ -120,8 +111,30 @@ Message Unreliable
 235	max data size
 
 Message Unreliable response
-1 	type = 21
+1 	type = 20
 1 	< 0 ? error : sender index
+1 	data size
+[]	data
+
+===============
+
+Message Reliable           <- start check from here
+1 	type = 21
+4	token
+2	id
+2 	room
+1	index
+1	target player index
+1	ack number
+1 	data size
+[]	data
+235	max data size
+
+Message Reliable/Relied response
+1 	type = 21 or 22
+1 	< 0 ? error : sender index
+1	ack number
+1 	data size
 []	data
 
 =============== errors

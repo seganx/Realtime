@@ -19,17 +19,17 @@ bool checksum_is_invalid(const byte* buffer, const uint len, const uint checksum
     return checksum != checksum_compute(buffer, len);
 }
 
-bool validate_player_id_range(const short id)
+inline bool validate_player_id_range(const short id)
 {
     return 0 <= id && id < LOBBY_PLAYER_COUNT;
 }
 
-bool validate_player_room_id_range(const short roomid)
+inline bool validate_player_room_id_range(const short roomid)
 {
     return 0 <= roomid && roomid < ROOM_COUNT;
 }
 
-bool validate_player_index_range(const sbyte index)
+inline bool validate_player_index_range(const sbyte index)
 {
     return 0 <= index && index < ROOM_PLAYER_COUNT;
 }
@@ -42,14 +42,14 @@ Player* lobby_get_player_validate_token(Server* server, const uint token, const 
 {
     if (validate_player_id_range(id) == false) return null;
     Player* player = &server->lobby.players[id];
-    return (player != null && player->token == token) ? player : null;
+    return (player->token == token) ? player : null;
 }
 
 Player* lobby_get_player_validate_all(Server* server, const uint token, const short id, const short room, const sbyte index)
 {
     if (validate_player_id_range(id) == false) return null;
     Player* player = &server->lobby.players[id];
-    return (player != null && player->token == token && player->room == room && player->index == index) ? player : null;
+    return (player->token == token && player->room == room && player->index == index) ? player : null;
 }
 
 Player* lobby_find_player_by_device(Server* server, const char* device)
@@ -133,16 +133,16 @@ bool room_add_player(Server* server, Player* player, const short roomid)
 
 void room_remove_player(Server* server, Player* player)
 {
-    int index = player->index;
-    int roomid = player->room;
-    player->room = player->index = -1;
+    if (validate_player_index_range(player->index) == false) return;
+    if (validate_player_room_id_range(player->room) == false) return;
 
-    Room* room = &server->rooms[roomid];
-    if (room->players[index] == player)
+    Room* room = &server->rooms[player->room];
+    if (room->players[player->index] == player)
     {
         room->count--;
-        room->players[index] = null;
+        room->players[player->index] = null;
     }
+    player->room = player->index = -1;
 }
 
 void room_report(Server* server, int roomid)

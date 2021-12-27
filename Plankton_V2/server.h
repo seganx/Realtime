@@ -8,9 +8,9 @@
 #define TYPE_ROOMS          4
 #define TYPE_JOIN           5
 #define TYPE_LEAVE          6
-#define TYPE_PACKET_RELY    20
-#define TYPE_PACKET_RELIED  21
-#define TYPE_PACKET_UNRELY  22
+#define TYPE_PACKET_UNRELY  20
+#define TYPE_PACKET_RELY    21
+#define TYPE_PACKET_RELIED  22
 
 #define ERR_INVALID         -1
 #define ERR_EXPIRED         -2
@@ -193,14 +193,6 @@ typedef struct PacketRelibale
     byte    datasize;
 }
 PacketReliable;
-
-typedef struct PacketResponse
-{
-    byte    type;
-    sbyte   sender;
-    byte*   data;
-}
-PacketResponse;
 
 typedef struct ErrorResponse
 {

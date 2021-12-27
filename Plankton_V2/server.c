@@ -15,18 +15,20 @@ Server server = { 0 };
 
 uint server_get_token()
 {
+    uint result;
     sx_mutex_lock(server.mutex_token);
     server.token++;
     if (server.token == 0) server.token++;
+    result = server.token;
     sx_mutex_unlock(server.mutex_token);
-    return server.token;
+    return result;
 }
 
 void server_init()
 {
     sx_trace();
 
-    sx_mem_set(&server, 0, sizeof(struct Server));
+    sx_mem_set(&server, 0, sizeof(Server));
     server.token = 654987;
 
     server.mutex_token = sx_mutex_create();
@@ -60,7 +62,6 @@ void server_reset(Config config)
 
     sx_return();
 }
-
 
 void server_cleanup(void)
 {
@@ -150,16 +151,10 @@ void server_process_logout(byte* buffer, const byte* from)
 {
     Logout* logout = (Logout*)buffer;
     if (validate_player_id_range(logout->id) == false)
-    {
-        server_send_error(from, TYPE_LOGOUT, 0);
         return;
-    }
 
     if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum))
-    {
-        server_send_error(from, TYPE_LOGOUT, 0);
         return;
-    }
 
     Player* player = lobby_get_player_validate_all(&server, logout->token, logout->id, logout->room, logout->index);
     if (player == null)
@@ -203,7 +198,6 @@ void server_process_rooms(byte* buffer, const byte* from)
 void server_process_join(byte* buffer, const byte* from)
 {
     Join* join = (Join*)buffer;
-    if (join->room < 0 || join->room >= ROOM_COUNT) return;
 
     Player* player = lobby_get_player_validate_token(&server, join->token, join->id);
     if (player == null)
@@ -215,9 +209,9 @@ void server_process_join(byte* buffer, const byte* from)
     sx_mutex_lock(server.mutex_room);
     if (player->room < 0)
     {
-        if (join->room == -1)
+        if (join->room < 0)
             room_add_player_auto(&server, player);
-        else
+        else if (join->room < ROOM_COUNT)
             room_add_player(&server, player, join->room);
     }
     sx_mutex_unlock(server.mutex_room);
@@ -256,28 +250,29 @@ void server_process_leave(byte* buffer, const byte* from)
 
 void server_process_packet_unreliable(byte* buffer, const byte* from)
 {
-    PacketUnreliable packet;
-    sx_mem_copy(&packet, buffer, sizeof(PacketUnreliable));
-    if (validate_player_index_range(packet.index) == false) return;
-    if (validate_player_room_id_range(packet.room) == false) return;
+    PacketUnreliable* packet = (PacketUnreliable*)buffer;
+    if (validate_player_index_range(packet->index) == false) return;
+    if (validate_player_room_id_range(packet->room) == false) return;
 
-    Player* player = lobby_get_player_validate_all(&server, packet.token, packet.id, packet.room, packet.index);
+    Player* player = lobby_get_player_validate_all(&server, packet->token, packet->id, packet->room, packet->index);
     if (player == null)
     {
         server_send_error(from, TYPE_PACKET_UNRELY, ERR_EXPIRED);
         return;
     }
 
-    Room* room = &server.rooms[packet.room];
-    if (packet.target == -1)
+    Room* room = &server.rooms[packet->room];
+    if (packet->target == -1)
     {
-        int packetsize = packet.datasize + 2;
-        buffer += sizeof(PacketUnreliable) - 2;
+        int sender = packet->index;
+        int packetsize = packet->datasize + 3;
+        buffer += sizeof(PacketUnreliable) - 3;
         buffer[0] = TYPE_PACKET_UNRELY;
-        buffer[1] = packet.index;
+        buffer[1] = sender;
+        //buffer[2] = packet->datasize;  no need to rewrite data size
         for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
         {
-            if (i == packet.index) continue;
+            if (i == sender) continue;
             Player* other = room->players[i];
             if (other->token > 0)
                 server_send(other->from, buffer, packetsize);
@@ -285,10 +280,12 @@ void server_process_packet_unreliable(byte* buffer, const byte* from)
     }
     else if (packet.target == -2)
     {
-        int packetsize = packet.datasize + 2;
-        buffer += sizeof(PacketUnreliable) - 2;
+        int sender = packet->index;
+        int packetsize = packet->datasize + 3;
+        buffer += sizeof(PacketUnreliable) - 3;
         buffer[0] = TYPE_PACKET_UNRELY;
-        buffer[1] = packet.index;
+        buffer[1] = sender;
+        //buffer[2] = packet->datasize;  no need to rewrite data size
         for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
         {
             Player* other = room->players[i];
@@ -296,15 +293,17 @@ void server_process_packet_unreliable(byte* buffer, const byte* from)
                 server_send(other->from, buffer, packetsize);
         }
     }
-    else if (validate_player_index_range(packet.target))
+    else if (validate_player_index_range(packet->target))
     {
-        Player* other = room->players[packet.target];
+        Player* other = room->players[packet->target];
         if (other->token > 0)
         {
-            int packetsize = packet.datasize + 2;
-            buffer += sizeof(PacketUnreliable) - 2;
+            int sender = packet->index;
+            int packetsize = packet->datasize + 3;
+            buffer += sizeof(PacketUnreliable) - 3;
             buffer[0] = TYPE_PACKET_UNRELY;
-            buffer[1] = packet.index;
+            buffer[1] = sender;
+            //buffer[2] = packet->datasize;  no need to rewrite data size
             server_send(other->from, buffer, packetsize);
         }
     }
@@ -327,14 +326,23 @@ void server_process_packet_reliable(byte type, byte* buffer, const byte* from)
 
     Room* room = &server.rooms[packet.room];
     Player* other = room->players[packet.target];
-    if (other->token == 0) return;
-
-    int packetsize = packet.datasize + 3;
-    buffer += sizeof(PacketReliable) - 3;
-    buffer[0] = type;
-    buffer[1] = packet.index;
-    buffer[2] = packet.ack;
-    server_send(other->from, buffer, packetsize);
+    if (other->token == 0) 
+    {
+        // just tell the sender that target has been left ?
+        buffer[0] = TYPE_PACKET_RELIED;
+        buffer[1] = packet.target;
+        buffer[2] = packet.ack;
+        server_send(other->from, buffer, 3);
+    }
+    else 
+    {
+        int packetsize = packet.datasize + 4;
+        buffer += sizeof(PacketReliable) - 4;
+        buffer[0] = type;
+        buffer[1] = packet.index;
+        buffer[2] = packet.ack;
+        server_send(other->from, buffer, packetsize);
+    }
 }
 
 void server_report(void)
