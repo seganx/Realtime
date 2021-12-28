@@ -29,12 +29,12 @@ Ping response
 ===============
 
 Login
-1 	type = 2
+1 	type = 10
 32	device id
 4	checksum
 
 Login response
-1 	type = 2
+1 	type = 10
 1	error
 4	token
 2	id
@@ -43,7 +43,7 @@ Login response
 ===============
 
 Logout 
-1 	type = 3
+1 	type = 11
 4	token
 2	id
 2	room
@@ -51,13 +51,13 @@ Logout
 4	checksum
 
 Logout response 
-1 	type = 3
+1 	type = 11
 1	error
 
 ===============
 
 Rooms
-1	type = 4
+1	type = 20
 4	token
 2	id
 1	option - all = 0, ignore full room = 1
@@ -65,7 +65,7 @@ Rooms
 1	count
 
 Rooms response
-1	type = 4
+1	type = 20
 1	error
 1	room count
 1[] player count
@@ -73,13 +73,13 @@ Rooms response
 ===============
 
 Join
-1	type = 5
+1	type = 30
 4	token
 2	id
 2	room - auto = -1
 
 Join response
-1	type = 5
+1	type = 30
 1	error
 2	room
 1	index
@@ -87,20 +87,20 @@ Join response
 ===============
 
 Leave
-1	type = 6
+1	type = 31
 4	token
 2	id
 2	room
 1	index
 
 Leave response
-1	type = 6
+1	type = 31
 1	error
 
 ===============
 
 Message Unreliable
-1 	type = 20
+1 	type = 40
 4	token
 2	id
 2 	room
@@ -111,15 +111,15 @@ Message Unreliable
 235	max data size
 
 Message Unreliable response
-1 	type = 20
+1 	type = 40
 1 	< 0 ? error : sender index
 1 	data size
 []	data
 
 ===============
 
-Message Reliable           <- start check from here
-1 	type = 21
+Message Reliable
+1 	type = 41
 4	token
 2	id
 2 	room
@@ -130,12 +130,28 @@ Message Reliable           <- start check from here
 []	data
 235	max data size
 
-Message Reliable/Relied response
-1 	type = 21 or 22
+Message Reliable response
+1 	type = 41
 1 	< 0 ? error : sender index
 1	ack number
 1 	data size
 []	data
+
+===============
+
+Message Relied
+1 	type = 42
+4	token
+2	id
+2 	room
+1	index
+1	target player index
+1	ack number
+
+Message Relied response
+1 	type = 42
+1 	< 0 ? error : sender index
+1	ack number
 
 =============== errors
 

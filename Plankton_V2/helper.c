@@ -21,7 +21,7 @@ bool checksum_is_invalid(const byte* buffer, const uint len, const uint checksum
 
 inline bool validate_player_id_range(const short id)
 {
-    return 0 <= id && id < LOBBY_PLAYER_COUNT;
+    return 0 <= id && id < LOBBY_CAPACITY;
 }
 
 inline bool validate_player_room_id_range(const short roomid)
@@ -31,7 +31,7 @@ inline bool validate_player_room_id_range(const short roomid)
 
 inline bool validate_player_index_range(const sbyte index)
 {
-    return 0 <= index && index < ROOM_PLAYER_COUNT;
+    return 0 <= index && index < ROOM_CAPACITY;
 }
 
 
@@ -54,7 +54,7 @@ Player* lobby_get_player_validate_all(Server* server, const uint token, const sh
 
 Player* lobby_find_player_by_device(Server* server, const char* device)
 {
-    for (short i = 0; i < LOBBY_PLAYER_COUNT; i++)
+    for (short i = 0; i < LOBBY_CAPACITY; i++)
     {
         Player* player = &server->lobby.players[i];
         if (player->token > 0 && sx_mem_cmp(player->device, device, DEVICE_LEN) == 0)
@@ -65,7 +65,7 @@ Player* lobby_find_player_by_device(Server* server, const char* device)
 
 Player* lobby_add_player(Server* server, const char* device, const byte* from, const uint token)
 {
-    for (short i = 0; i < LOBBY_PLAYER_COUNT; i++)
+    for (short i = 0; i < LOBBY_CAPACITY; i++)
     {
         Player* player = &server->lobby.players[i];
         if (player->token > 0) continue;
@@ -116,7 +116,7 @@ bool room_add_player(Server* server, Player* player, const short roomid)
 {
     Room* room = &server->rooms[roomid];
 
-    for (byte i = 0; i < ROOM_PLAYER_COUNT; i++)
+    for (byte i = 0; i < ROOM_CAPACITY; i++)
     {
         if (room->players[i] == null)
         {
@@ -151,7 +151,7 @@ void room_report(Server* server, int roomid)
 
     Room* room = &server->rooms[roomid];
     sx_print("Room[%d] -> %d players", roomid, room->count);
-    for (uint p = 0; p < ROOM_PLAYER_COUNT; p++)
+    for (uint p = 0; p < ROOM_CAPACITY; p++)
     {
         Player* player = room->players[p];
         if (player == null || player->token < 1) continue;

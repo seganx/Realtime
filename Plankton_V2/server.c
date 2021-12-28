@@ -70,7 +70,7 @@ void server_cleanup(void)
     sx_time now = sx_time_now();
     sx_mutex_lock(server.mutex_lobby);
 
-    for (short i = 0; i < LOBBY_PLAYER_COUNT; i++)
+    for (short i = 0; i < LOBBY_CAPACITY; i++)
     {
         Player* player = &server.lobby.players[i];
         if (player->token > 0 && sx_time_diff(now, player->active_time) > server.config.player_timeout)
@@ -120,7 +120,7 @@ void server_ping(byte* buffer, const byte* from)
 
 void server_process_login(byte* buffer, const byte* from)
 {
-    if (server.lobby.count >= LOBBY_PLAYER_COUNT)
+    if (server.lobby.count >= LOBBY_CAPACITY)
     {
         server_send_error(from, TYPE_LOGIN, ERR_IS_FULL);
         return;
@@ -270,15 +270,15 @@ void server_process_packet_unreliable(byte* buffer, const byte* from)
         buffer[0] = TYPE_PACKET_UNRELY;
         buffer[1] = sender;
         //buffer[2] = packet->datasize;  no need to rewrite data size
-        for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
+        for (uint i = 0; i < ROOM_CAPACITY; i++)
         {
             if (i == sender) continue;
             Player* other = room->players[i];
-            if (other->token > 0)
+            if (other != null && other->token > 0)
                 server_send(other->from, buffer, packetsize);
         }
     }
-    else if (packet.target == -2)
+    else if (packet->target == -2)
     {
         int sender = packet->index;
         int packetsize = packet->datasize + 3;
@@ -286,17 +286,17 @@ void server_process_packet_unreliable(byte* buffer, const byte* from)
         buffer[0] = TYPE_PACKET_UNRELY;
         buffer[1] = sender;
         //buffer[2] = packet->datasize;  no need to rewrite data size
-        for (uint i = 0; i < ROOM_PLAYER_COUNT; i++)
+        for (uint i = 0; i < ROOM_CAPACITY; i++)
         {
             Player* other = room->players[i];
-            if (other->token > 0)
+            if (other != null && other->token > 0)
                 server_send(other->from, buffer, packetsize);
         }
     }
     else if (validate_player_index_range(packet->target))
     {
         Player* other = room->players[packet->target];
-        if (other->token > 0)
+        if (other != null && other->token > 0)
         {
             int sender = packet->index;
             int packetsize = packet->datasize + 3;
@@ -309,44 +309,77 @@ void server_process_packet_unreliable(byte* buffer, const byte* from)
     }
 }
 
-void server_process_packet_reliable(byte type, byte* buffer, const byte* from)
+void server_process_packet_reliable(byte* buffer, const byte* from)
 {
-    PacketReliable packet;
-    sx_mem_copy(&packet, buffer, sizeof(PacketReliable));
-    if (validate_player_index_range(packet.index) == false) return;
-    if (validate_player_room_id_range(packet.room) == false) return;
-    if (validate_player_index_range(packet.target) == false) return;
+    PacketReliable* packet = (PacketReliable*)buffer;
+    if (validate_player_index_range(packet->index) == false) return;
+    if (validate_player_room_id_range(packet->room) == false) return;
+    if (validate_player_index_range(packet->target) == false) return;
 
-    Player* player = lobby_get_player_validate_all(&server, packet.token, packet.id, packet.room, packet.index);
+    Player* player = lobby_get_player_validate_all(&server, packet->token, packet->id, packet->room, packet->index);
     if (player == null)
     {
-        server_send_error(from, type, ERR_EXPIRED);
+        server_send_error(from, TYPE_PACKET_RELY, ERR_EXPIRED);
         return;
     }
 
-    Room* room = &server.rooms[packet.room];
-    Player* other = room->players[packet.target];
-    if (other->token == 0) 
+    Room* room = &server.rooms[packet->room];
+    Player* other = room->players[packet->target];
+    if (other == null || other->token == 0)
     {
-        // just tell the sender that target has been left ?
+        sbyte target = packet->target;
+        byte ack = packet->ack;
+        // fake response to sender to stop trying
         buffer[0] = TYPE_PACKET_RELIED;
-        buffer[1] = packet.target;
-        buffer[2] = packet.ack;
-        server_send(other->from, buffer, 3);
+        buffer[1] = target;
+        buffer[2] = ack;
+        server_send(player->from, buffer, 3);
     }
     else 
     {
-        int packetsize = packet.datasize + 4;
+        sbyte index = packet->index;
+        byte ack = packet->ack;
+        int packetsize = packet->datasize + 4;
         buffer += sizeof(PacketReliable) - 4;
-        buffer[0] = type;
-        buffer[1] = packet.index;
-        buffer[2] = packet.ack;
+        buffer[0] = TYPE_PACKET_RELY;
+        buffer[1] = index;
+        buffer[2] = ack;
+        //buffer[3] = packet->datasize;  no need to rewrite data size
         server_send(other->from, buffer, packetsize);
+    }
+}
+
+void server_process_packet_relied(byte* buffer, const byte* from)
+{
+    PacketRelied* packet = (PacketRelied*)buffer;
+    if (validate_player_index_range(packet->index) == false) return;
+    if (validate_player_room_id_range(packet->room) == false) return;
+    if (validate_player_index_range(packet->target) == false) return;
+
+    Player* player = lobby_get_player_validate_all(&server, packet->token, packet->id, packet->room, packet->index);
+    if (player == null)
+    {
+        server_send_error(from, TYPE_PACKET_RELIED, ERR_EXPIRED);
+        return;
+    }
+
+    Room* room = &server.rooms[packet->room];
+    Player* other = room->players[packet->target];
+    if (other != null && other->token > 0)
+    {
+        sbyte index = packet->index;
+        byte ack = packet->ack;
+        buffer[0] = TYPE_PACKET_RELIED;
+        buffer[1] = index;
+        buffer[2] = ack;
+        server_send(other->from, buffer, 3);
     }
 }
 
 void server_report(void)
 {
+    sx_print("Total players in lobby: %d", server.lobby.count);
+
     int total_rooms = 0, total_players = 0;
     for (uint r = 0; r < ROOM_COUNT; r++)
     {
@@ -355,7 +388,7 @@ void server_report(void)
         total_rooms++;
         total_players += server.rooms[r].count;
     }
-    sx_print("Total active rooms: %d\nTotal active players: %d", total_rooms, total_players);
+    sx_print("Total active rooms: %d\nTotal players in room: %d", total_rooms, total_players);
 }
 
 
@@ -384,15 +417,15 @@ void thread_listener(void* param)
     while (true)
     {
         byte from[ADDRESS_LEN] = { 0 };
-        byte buffer[512] = { 0 };
-        sx_socket_receive(server.socket, buffer, 510, (struct sockaddr*)from);
+        byte buffer[1024] = { 0 };
+        sx_socket_receive(server.socket, buffer, 512, (struct sockaddr*)from);
 
         switch (buffer[0])
         {
         case TYPE_PING: server_ping(buffer, from); break;
         case TYPE_PACKET_UNRELY: server_process_packet_unreliable(buffer, from); break;
-        case TYPE_PACKET_RELY: server_process_packet_reliable(TYPE_PACKET_RELY, buffer, from); break;
-        case TYPE_PACKET_RELIED: server_process_packet_reliable(TYPE_PACKET_RELIED, buffer, from); break;
+        case TYPE_PACKET_RELY: server_process_packet_reliable(buffer, from); break;
+        case TYPE_PACKET_RELIED: server_process_packet_relied(buffer, from); break;
         case TYPE_LOGIN: server_process_login(buffer, from); break;
         case TYPE_LOGOUT: server_process_logout(buffer, from); break;
         case TYPE_ROOMS: server_process_rooms(buffer, from); break;
@@ -406,7 +439,7 @@ void thread_listener(void* param)
 
 int main()
 {
-    sx_trace_attach(64, "trance.txt");
+    sx_trace_attach(64, "trace.txt");
     sx_trace();
     sx_net_initialize();
 
@@ -415,7 +448,7 @@ int main()
     {
         Config config = { 0 };
         config.port = 36000;
-        config.room_capacity = 16;
+        config.room_capacity = ROOM_CAPACITY;
         config.player_timeout = 300;
         server_reset(config);
 

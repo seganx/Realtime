@@ -3,14 +3,14 @@
 #include "core/def.h"
 
 #define TYPE_PING           1
-#define TYPE_LOGIN          2
-#define TYPE_LOGOUT         3
-#define TYPE_ROOMS          4
-#define TYPE_JOIN           5
-#define TYPE_LEAVE          6
-#define TYPE_PACKET_UNRELY  20
-#define TYPE_PACKET_RELY    21
-#define TYPE_PACKET_RELIED  22
+#define TYPE_LOGIN          10
+#define TYPE_LOGOUT         11
+#define TYPE_ROOMS          20
+#define TYPE_JOIN           30
+#define TYPE_LEAVE          31
+#define TYPE_PACKET_UNRELY  40
+#define TYPE_PACKET_RELY    41
+#define TYPE_PACKET_RELIED  42
 
 #define ERR_INVALID         -1
 #define ERR_EXPIRED         -2
@@ -19,10 +19,11 @@
 #define DEVICE_LEN          32
 #define THREAD_COUNTS       32
 #define ADDRESS_LEN         32
-#define DATA_MAXLEN         230
 #define ROOM_COUNT          1024
-#define ROOM_PLAYER_COUNT   16
-#define LOBBY_PLAYER_COUNT  (ROOM_COUNT * ROOM_PLAYER_COUNT)
+#define ROOM_CAPACITY       16
+#define LOBBY_CAPACITY      (ROOM_COUNT * ROOM_CAPACITY)
+
+#define LOG                 1
 
 typedef struct Player
 {
@@ -39,7 +40,7 @@ Player;
 typedef struct Lobby
 {
     uint    count;
-    Player  players[LOBBY_PLAYER_COUNT];
+    Player  players[LOBBY_CAPACITY];
 }
 Lobby;
 
@@ -47,7 +48,7 @@ typedef struct Room
 {
     sbyte   count;
     sbyte   capacity;
-    Player* players[ROOM_PLAYER_COUNT];
+    Player* players[ROOM_CAPACITY];
 }
 Room;
 
@@ -169,7 +170,7 @@ typedef struct LeaveResponse
 }
 LeaveResponse;
 
-typedef struct PacketUnrelibale
+typedef struct PacketUnreliable
 {
     byte    type;
     uint    token;
@@ -181,7 +182,7 @@ typedef struct PacketUnrelibale
 }
 PacketUnreliable;
 
-typedef struct PacketRelibale
+typedef struct PacketReliable
 {
     byte    type;
     uint    token;
@@ -193,6 +194,18 @@ typedef struct PacketRelibale
     byte    datasize;
 }
 PacketReliable;
+
+typedef struct PacketRelied
+{
+    byte    type;
+    uint    token;
+    short   id;
+    short   room;
+    sbyte   index;
+    sbyte   target;
+    byte    ack;
+}
+PacketRelied;
 
 typedef struct ErrorResponse
 {
