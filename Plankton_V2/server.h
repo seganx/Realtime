@@ -12,6 +12,8 @@
 #define TYPE_PACKET_RELY    41
 #define TYPE_PACKET_RELIED  42
 
+#define FLAG_MASTER         1
+
 #define ERR_INVALID         -1
 #define ERR_EXPIRED         -2
 #define ERR_IS_FULL         -3
@@ -30,10 +32,11 @@ typedef struct Player
     char    device[DEVICE_LEN];
     byte    from[ADDRESS_LEN];
     uint    token;
-    ulong   active_time;
     short   id;
     short   room;
     sbyte   index;
+    byte    flag;
+    ulong   active_time;
 }
 Player;
 
@@ -57,6 +60,7 @@ typedef struct Config
     short   port;
     sbyte   room_capacity;
     uint    player_timeout;
+    uint    player_master_timeout;
 } 
 Config;
 
@@ -85,6 +89,16 @@ typedef struct Ping
     ulong   time;
 }
 Ping;
+
+typedef struct PingResponse
+{
+    byte    type;
+    sbyte   error;
+    ulong   time;
+    ulong   now;
+    byte    flag;
+}
+PingResponse;
 
 typedef struct Login
 {
@@ -149,7 +163,8 @@ typedef struct JoinResponse
     byte    type;
     sbyte   error;
     short   room;
-    sbyte   player;
+    sbyte   index;
+    byte    flag;
 }
 JoinResponse;
 

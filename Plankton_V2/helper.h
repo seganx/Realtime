@@ -1,6 +1,7 @@
 #pragma once
 
 #include "server.h"
+#include "core/timer.h"
 
 uint    checksum_compute(const byte* buffer, const uint len);
 bool    checksum_is_invalid(const byte* buffer, const uint len, const uint checksum);
@@ -19,6 +20,7 @@ int     room_find_free(Server* server);
 bool    room_add_player_auto(Server* server, Player* player);
 bool    room_add_player(Server* server, Player* player, const short roomid);
 void    room_remove_player(Server* server, Player* player);
+void    room_check_master(Server* server, sx_time now, const short roomid);
 void    room_report(Server* server, int roomid);
 
 void    player_report(Player* player);

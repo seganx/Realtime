@@ -1,6 +1,7 @@
 #include "server.h"
 #include "core/memory.h"
 #include "core/timer.h"
+#include "core/trace.h"
 #include "core/platform.h"
 #include "net/socket.h"
 #include "helper.h"
@@ -143,6 +144,50 @@ void room_remove_player(Server* server, Player* player)
         room->players[player->index] = null;
     }
     player->room = player->index = -1;
+    player->flag = 0;
+}
+
+void room_check_master(Server* server, sx_time now, const short roomid)
+{
+    Room* room = &server->rooms[roomid];
+    if (room->count < 1) return;
+
+    sx_trace();
+
+    // find the current master
+    Player* current_master = null;
+    for (uint p = 0; p < ROOM_CAPACITY; p++)
+    {
+        Player* player = room->players[p];
+        if (player == null || player->token < 1) continue;
+        if (sx_flag_has(player->flag, FLAG_MASTER))
+        {
+            current_master = player;
+            break;
+        }
+    }
+
+    // validate current master
+    if (current_master != null && sx_time_diff(now, current_master->active_time) < server->config.player_master_timeout)
+        sx_return();
+
+    // validation failed so remove current master
+    if (current_master != null)
+        sx_flag_rem(current_master->flag, FLAG_MASTER);
+
+    // find new master 
+    for (uint p = 0; p < ROOM_CAPACITY; p++)
+    {
+        Player* player = room->players[p];
+        if (player == null || player->token < 1) continue;
+        if (sx_time_diff(now, player->active_time) < server->config.player_master_timeout)
+        {
+            sx_flag_add(player->flag, FLAG_MASTER);
+            break;
+        }
+    }
+
+    sx_return();
 }
 
 void room_report(Server* server, int roomid)
@@ -162,5 +207,5 @@ void room_report(Server* server, int roomid)
 
 void player_report(Player* player)
 {
-    sx_print("Player token[%u] time[%llu] device:%.32s", player->token, player->active_time, player->device);
+    sx_print("Player flag[%d] token[%u] time[%llu] device:%.32s", player->flag, player->token, player->active_time, player->device);
 }

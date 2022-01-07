@@ -16,15 +16,14 @@ Ping
 2	id
 2 	room
 1	index
-8	time
+8	client time
 
 Ping response
 1 	type = 1
-4	error
-2	id
-2 	room
-1	index
+1	error
 8	time
+8	now
+1	flag : master = 1
 
 ===============
 
@@ -83,6 +82,7 @@ Join response
 1	error
 2	room
 1	index
+1	flag
 
 ===============
 

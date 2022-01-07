@@ -87,6 +87,19 @@ void server_cleanup(void)
     sx_return();
 }
 
+void server_rooms_update()
+{
+    sx_trace();
+
+    sx_time now = sx_time_now();
+    sx_mutex_lock(server.mutex_room);
+    for (short i = 0; i < ROOM_COUNT; i++)
+        room_check_master(&server, now, i);
+    sx_mutex_unlock(server.mutex_room);
+
+    sx_return();
+}
+
 void server_send(const byte* address, const void* buffer, const int size)
 {
     sx_socket_send_in(server.socket, (const struct sockaddr*)address, buffer, size);
@@ -109,13 +122,14 @@ void server_ping(byte* buffer, const byte* from)
         return;
     }
 
+    sx_time now = sx_time_now();
     sx_mutex_lock(server.mutex_lobby);
     sx_mem_copy(player->from, from, ADDRESS_LEN);
-    player->active_time = sx_time_now();
+    player->active_time = now;
     sx_mutex_unlock(server.mutex_lobby);
 
-    ping->token = 0; // means no error
-    server_send(from, ping, sizeof(Ping));
+    PingResponse response = { TYPE_PING, 0, ping->time, now, player->flag };
+    server_send(from, &response, sizeof(PingResponse));
 }
 
 void server_process_login(byte* buffer, const byte* from)
@@ -213,6 +227,9 @@ void server_process_join(byte* buffer, const byte* from)
             room_add_player_auto(&server, player);
         else if (join->room < ROOM_COUNT)
             room_add_player(&server, player, join->room);
+
+        if (player->room >= 0)
+            room_check_master(&server, sx_time_now(), player->room);
     }
     sx_mutex_unlock(server.mutex_room);
 
@@ -222,7 +239,7 @@ void server_process_join(byte* buffer, const byte* from)
         return;
     }
 
-    JoinResponse response = { TYPE_JOIN, 0, player->room, player->index };
+    JoinResponse response = { TYPE_JOIN, 0, player->room, player->index, player->flag };
     server_send(from, &response, sizeof(JoinResponse));
 }
 
@@ -335,7 +352,7 @@ void server_process_packet_reliable(byte* buffer, const byte* from)
         buffer[2] = ack;
         server_send(player->from, buffer, 3);
     }
-    else 
+    else
     {
         sbyte index = packet->index;
         byte ack = packet->ack;
@@ -403,7 +420,8 @@ void thread_ticker(void* param)
     while (true)
     {
         server_cleanup();
-        sx_sleep(2000);
+        server_rooms_update();
+        sx_sleep(1000);
     }
 
     sx_trace_detach();
@@ -450,6 +468,7 @@ int main()
         config.port = 36000;
         config.room_capacity = ROOM_CAPACITY;
         config.player_timeout = 300;
+        config.player_master_timeout = 5;
         server_reset(config);
 
         char t[64] = { 0 };

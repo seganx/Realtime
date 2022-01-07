@@ -122,11 +122,11 @@ typedef unsigned char bool;
 #define sx_release(Obj)						{ if (Obj) { Obj->Release(); } }
 #define sx_release_and_null(Obj)			{ if (Obj) { Obj->Release(); Obj = null; } }
 
-// some useful macros for cardinal handling
-#define sx_set_has(set, subset)				( set & subset )
-#define sx_set_hasnt(set, subset)			( !( set & subset ) )
-#define sx_set_add(set, subset)				( set |= subset )
-#define sx_set_rem(set, subset)				( set &= ~subset )
+// some useful macros for flags
+#define sx_flag_has(set, flag)				( set & flag )
+#define sx_flag_hasnt(set, flag)			( !( set & flag ) )
+#define sx_flag_add(set, flag)				( set |= flag )
+#define sx_flag_rem(set, flag)				( set &= ~flag )
 
 // some useful functions for byte operations
 #define sx_byte_of(var, index)				( ( (byte*)(&var) )[index] )
