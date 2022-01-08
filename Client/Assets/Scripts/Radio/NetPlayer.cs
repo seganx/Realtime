@@ -11,8 +11,8 @@ namespace SeganX.Network
         public sbyte Id { get; private set; } = -1;
         public bool IsActive { get; private set; } = true;
 
-        public bool IsMine => Plankton.PlayerId == Id;
-        public bool IsOther => Plankton.PlayerId != Id;
+        public bool IsMine => Radio.PlayerId == Id;
+        public bool IsOther => Radio.PlayerId != Id;
 
         public event Action<BufferReader, byte> OnReceived = (buffer, size) => { };
         public event Action OnDestory = () => { };
@@ -43,13 +43,13 @@ namespace SeganX.Network
         public void SendUnreliable(Target target, BufferWriter data, sbyte otherId = 0)
         {
             if (IsOther) return;
-            Plankton.SendUnreliable(target, data, otherId);
+            Radio.SendUnreliable(target, data, otherId);
         }
 
         public void SendReliable(Target target, BufferWriter data, sbyte otherId = 0)
         {
             if (IsOther) return;
-            Plankton.SendReliable(target, data, otherId);
+            Radio.SendReliable(target, data, otherId);
         }
 
         public override string ToString()

@@ -12,7 +12,7 @@ using System.Threading;
 
 namespace SeganX.Network
 {
-    public class Plankton : MonoBehaviour
+    public class Radio : MonoBehaviour
     {
         public const int Capacity = 32;
 
@@ -61,7 +61,7 @@ namespace SeganX.Network
         //////////////////////////////////////////////////////
         /// STATIC MEMBERS
         //////////////////////////////////////////////////////
-        private static Plankton instance = null;
+        private static Radio instance = null;
         private static readonly Messenger messenger = new Messenger();
         private static readonly List<NetPlayer> cache = new List<NetPlayer>(Capacity);
 
@@ -93,7 +93,7 @@ namespace SeganX.Network
             for (int i = 0; i < cache.Capacity; i++)
                 cache.Add(null);
 
-            instance = new GameObject(nameof(Plankton)).AddComponent<Plankton>();
+            instance = new GameObject(nameof(Radio)).AddComponent<Radio>();
             //instance.gameObject.hideFlags = HideFlags.HideInHierarchy;
             DontDestroyOnLoad(instance);
 

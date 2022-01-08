@@ -9,45 +9,45 @@ public class Test : MonoBehaviour
     private void Start()
     {
         Application.runInBackground = true;
-        Plankton.PlayerActiveTimeout = 5;
-        Plankton.PlayerDestoryTimeout = 20;
-        Plankton.OnPlayerConnected += Player.CreatePlayer;
-        Plankton.OnPlayerDestroyed += Player.DestroyPlayer;
-        Plankton.OnError += error => Debug.LogError("Net Error: " + error);
+        Radio.PlayerActiveTimeout = 5;
+        Radio.PlayerDestoryTimeout = 20;
+        Radio.OnPlayerConnected += Player.CreatePlayer;
+        Radio.OnPlayerDestroyed += Player.DestroyPlayer;
+        Radio.OnError += error => Debug.LogError("Net Error: " + error);
     }
 
     private void OnDisable()
     {
-        Plankton.Disconnect();
-        Plankton.OnPlayerConnected -= Player.CreatePlayer;
-        Plankton.OnPlayerDestroyed -= Player.DestroyPlayer;
+        Radio.Disconnect();
+        Radio.OnPlayerConnected -= Player.CreatePlayer;
+        Radio.OnPlayerDestroyed -= Player.DestroyPlayer;
     }
 
     void OnGUI()
     {
         Rect rect = new Rect(10, 10, 300, 30);
-        GUI.Label(rect, $"Connection: {Plankton.IsConnected}");
+        GUI.Label(rect, $"Connection: {Radio.IsConnected}");
         rect.y += 20;
-        GUI.Label(rect, $"Token:{Plankton.Token} Room:{Plankton.RoomId} Id:{Plankton.PlayerId} IsMaster:{Plankton.IsMaster}");
+        GUI.Label(rect, $"Token:{Radio.Token} Room:{Radio.RoomId} Id:{Radio.PlayerId} IsMaster:{Radio.IsMaster}");
         rect.y += 20;
-        GUI.Label(rect, $"Ping:{Plankton.Ping} ServerTime:{Plankton.ServerTime}");
+        GUI.Label(rect, $"Ping:{Radio.Ping} ServerTime:{Radio.ServerTime}");
 
         rect.width = 100;
         rect.y += 20;
         if (GUI.Button(rect, "Start"))
 #if UNITY_STANDALONE_WIN
-            Plankton.Connect(testAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
+            Radio.Connect(testAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
 #else
             Plankton.Start(serverAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
 #endif
 
         rect.y += 40;
         if (GUI.Button(rect, "End"))
-            Plankton.Disconnect();
+            Radio.Disconnect();
 
         rect.y += 40;
         if (GUI.Button(rect, "Get Rooms"))
-            Plankton.GetRooms(0, 10, true, (count, rooms) =>
+            Radio.GetRooms(0, 10, true, (count, rooms) =>
             {
                 string str = $"Rooms: Count[{count}] - Rooms: ";
                 for (int i = 0; i < count; i++)
@@ -61,24 +61,24 @@ public class Test : MonoBehaviour
         rect.y += 15;
         rect.width = 40;
         if (GUI.Button(rect, "Auto"))
-            Plankton.JoinRoom(-1, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+            Radio.JoinRoom(-1, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
         rect.x += 40;
         if (GUI.Button(rect, "0"))
-            Plankton.JoinRoom(0, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+            Radio.JoinRoom(0, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
         rect.x += 40;
         if (GUI.Button(rect, "1"))
-            Plankton.JoinRoom(1, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+            Radio.JoinRoom(1, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
         rect.x += 40;
         if (GUI.Button(rect, "2"))
-            Plankton.JoinRoom(2, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+            Radio.JoinRoom(2, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
         rect.x += 40;
         if (GUI.Button(rect, "3"))
-            Plankton.JoinRoom(3, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+            Radio.JoinRoom(3, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
 
         rect.x = 10; rect.width = 150;
         rect.y += 40;
         if (GUI.Button(rect, "Leave Room"))
-            Plankton.LeaveRoom(() =>
+            Radio.LeaveRoom(() =>
             {
                 Debug.Log($"Leaved room");
             });
