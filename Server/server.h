@@ -114,6 +114,8 @@ typedef struct LoginResponse
     sbyte   error;
     uint    token;
     short   id;
+    short   room;
+    sbyte   index;
     uint    checksum;
 }
 LoginResponse;

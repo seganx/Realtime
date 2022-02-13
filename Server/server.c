@@ -156,7 +156,7 @@ void server_process_login(byte* buffer, const byte* from)
         return;
     }
 
-    LoginResponse response = { TYPE_LOGIN, 0, player->token, player->id };
+    LoginResponse response = { TYPE_LOGIN, 0, player->token, player->id, player->room, player->index };
     response.checksum = checksum_compute((const byte*)&response, sizeof(LoginResponse) - sizeof(uint));
     server_send(from, &response, sizeof(LoginResponse));
 }

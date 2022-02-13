@@ -37,6 +37,8 @@ Login response
 1	error
 4	token
 2	id
+2	room
+1	index
 4	checksum
 
 ===============
