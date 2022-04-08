@@ -9,7 +9,7 @@ project(server)
 file(GLOB server_files 
 	"*.c"
 	"core/*.c"
-	"net/*.c" 
+	"net/*.c"
 	)
 
 add_executable(server ${server_files})

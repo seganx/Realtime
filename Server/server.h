@@ -57,7 +57,7 @@ Room;
 
 typedef struct Config
 {
-    short   port;
+    ushort  port;
     sbyte   room_capacity;
     uint    player_timeout;
     uint    player_master_timeout;

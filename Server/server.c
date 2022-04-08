@@ -10,6 +10,7 @@
 #include "core/trace.h"
 #include "core/timer.h"
 #include "core/platform.h"
+#include "core/Json.h"
 
 Server server = { 0 };
 
@@ -455,6 +456,40 @@ void thread_listener(void* param)
     sx_trace_detach();
 }
 
+Config LoadConfig() 
+{
+    sx_trace();
+
+    Config config = { 0 };
+    config.port = 36000;
+    config.room_capacity = ROOM_CAPACITY;
+    config.player_timeout = 300;
+    config.player_master_timeout = 5;
+
+    FILE* file = null;
+    if (fopen_s(&file, "config.json", "r") == 0) 
+    {
+        char json_string[1024] = { 0 };
+        fread_s(json_string, sizeof(json_string), 1, sizeof(json_string), file);
+        
+        sx_json_node json_nodes[64] = { 0 };
+        sx_json json = { 0 };
+        json.nodes = json_nodes;
+        json.nodescount = 64;
+
+        sx_json_node* root = sx_json_parse(&json, json_string, sx_str_len(json_string));
+
+        config.port = sx_json_read_int(root, "port", config.port);
+        config.room_capacity = sx_json_read_int(root, "room_capacity", config.room_capacity);
+        config.player_timeout = sx_json_read_int(root, "player_timeout", config.player_timeout);
+        config.player_master_timeout = sx_json_read_int(root, "player_master_timeout", config.player_master_timeout);
+
+        fclose(file);
+    }
+
+    sx_return(config);
+}
+
 int main()
 {
     sx_trace_attach(64, "trace.txt");
@@ -464,16 +499,16 @@ int main()
     // initialize server with default config
     server_init();
     {
-        Config config = { 0 };
-        config.port = 36000;
-        config.room_capacity = ROOM_CAPACITY;
-        config.player_timeout = 300;
-        config.player_master_timeout = 5;
+        Config config = LoadConfig();
         server_reset(config);
 
         char t[64] = { 0 };
         sx_time_print(t, 64, sx_time_now());
-        sx_print("Server started on %s", t);
+        sx_print("server started on %s", t);
+        sx_print("port: %d", config.port);
+        sx_print("room capacity: %d", config.room_capacity);
+        sx_print("player timeout: %d", config.player_timeout);
+        sx_print("player master timeout: %d", config.player_master_timeout);
     }
 
     struct sx_thread* threads[THREAD_COUNTS] = { null };
