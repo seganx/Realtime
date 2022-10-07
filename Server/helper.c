@@ -95,15 +95,74 @@ void lobby_remove_player(Server* server, const short id)
 /////////////////////////////////////////////////////////////////////////////
 //  ROOM
 /////////////////////////////////////////////////////////////////////////////
+int room_find_empty(Server* server)
+{
+    for (short r = 0; r < ROOM_COUNT; r++)
+    {
+        Room* room = &server->rooms[r];
+        if (room->count == 0)
+            return r;
+    }
+    return -1;
+}
+
 int room_find_free(Server* server)
 {
     for (short r = 0; r < ROOM_COUNT; r++)
     {
         Room* room = &server->rooms[r];
-        if (room->count < room->capacity)
+        if (room->count < server->config.room_capacity)
             return r;
     }
     return -1;
+}
+
+bool room_is_open(const Room* room, const sx_time now) 
+{
+    if (room->open_time == 0) return false;  // this means that the room is never openned!
+    if (room->open_timeout == 0) return true;
+    return sx_time_diff(now, room->open_time) <= room->open_timeout;
+}
+
+bool room_is_match(Room* room, byte params_count, int* params) 
+{
+    if (params_count > ROOM_PARAMS) 
+        params_count = ROOM_PARAMS;
+
+    bool result = true;
+    for (byte i = 0; i < params_count && result; i++)
+    {
+        int room_param = room->matchmaking[i];
+        int param_low = params[i * 2];
+        int param_high = params[i * 2] + 1;
+        result = result && param_low <= room_param && room_param <= param_high;
+    }
+    return result;
+}
+
+bool room_create(Server* server, Player* player, ushort timeout, byte* properties, int* matchmaking)
+{
+    int roomid = room_find_empty(server);
+    if (roomid < 0) return false;
+    Room* room = &server->rooms[roomid];
+    room->open_time = sx_time_now();
+    room->open_timeout = timeout;
+    sx_mem_copy(room->properties, properties, ROOM_PROP_LEN);
+    sx_mem_copy(room->matchmaking, matchmaking, ROOM_PARAMS);
+    return room_add_player(server, player, roomid);
+}
+
+bool room_join(Server* server, Player* player, byte params_count, int* params)
+{
+    sx_time now = sx_time_now();
+    for (short roomid = 0; roomid < ROOM_COUNT; roomid++)
+    {
+        Room* room = &server->rooms[roomid];
+        if (room->count >= server->config.room_capacity) continue;
+        if (room_is_open(room, now) && room_is_match(room, params_count, params))
+            return room_add_player(server, player, roomid);
+    }
+    return false;
 }
 
 bool room_add_player_auto(Server* server, Player* player)

@@ -57,27 +57,36 @@ Logout response
 
 ===============
 
-Rooms
+Create room
 1	type = 20
 4	token
 2	id
-1	option - all = 0, ignore full room = 1
-2	start index
-1	count
+2	open time out
+32  properties
+16	matchmaking int x 4
 
-Rooms response
+Create response
 1	type = 20
 1	error
-1	room count
-1[] player count
+2	room
+1	index
+1	flag
 
 ===============
 
-Join
+Join room
 1	type = 30
 4	token
 2	id
-2	room - auto = -1
+1	matchmaking params count
+4   low bound 0
+4   high bound 0
+4   low bound 1
+4   high bound 1
+4   low bound 2
+4   high bound 2
+4   low bound 3
+4   high bound 3
 
 Join response
 1	type = 30

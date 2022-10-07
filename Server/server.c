@@ -58,9 +58,6 @@ void server_reset(Config config)
     if (server.socket > 0) sx_socket_close(server.socket);
     server.socket = sx_socket_open(config.port, true, false);
 
-    for (size_t r = 0; r < ROOM_COUNT; r++)
-        server.rooms[r].capacity = config.room_capacity;
-
     sx_return();
 }
 
@@ -189,32 +186,40 @@ void server_process_logout(byte* buffer, const byte* from)
     server_send_error(from, TYPE_LOGOUT, 0);
 }
 
-void server_process_rooms(byte* buffer, const byte* from)
+void server_process_create(byte* buffer, const byte* from)
 {
-    Rooms* rooms = (Rooms*)buffer;
-    if (rooms->start < 0 || rooms->start >= ROOM_COUNT) return;
+    Create* request = (Create*)buffer;
 
-    if (lobby_get_player_validate_token(&server, rooms->token, rooms->id) == null)
+    Player* player = lobby_get_player_validate_token(&server, request->token, request->id);
+    if (player == null)
     {
-        server_send_error(from, TYPE_ROOMS, ERR_EXPIRED);
+        server_send_error(from, TYPE_CREATE, ERR_EXPIRED);
         return;
     }
 
-    RoomsResponse response = { TYPE_ROOMS, 0 };
-    for (int i = rooms->start; i < ROOM_COUNT && response.count < rooms->count; i++)
+    sx_mutex_lock(server.mutex_room);
+    if (player->room < 0)
     {
-        Room* room = &server.rooms[i];
-        if (rooms->option == 1 && room->count >= room->capacity) continue;
-        response.players[response.count++] = room->count;
+        if (room_create(&server, player, request->open_timeout, request->properties, request->matchmaking))
+            room_check_master(&server, sx_time_now(), player->room);
     }
-    server_send(from, &response, sizeof(RoomsResponse));
+    sx_mutex_unlock(server.mutex_room);
+
+    if (player->room < 0)
+    {
+        server_send_error(from, TYPE_CREATE, ERR_IS_FULL);
+        return;
+    }
+
+    CreateResponse response = { TYPE_CREATE, 0, player->room, player->index, player->flag };
+    server_send(from, &response, sizeof(CreateResponse));
 }
 
 void server_process_join(byte* buffer, const byte* from)
 {
-    Join* join = (Join*)buffer;
+    Join* request = (Join*)buffer;
 
-    Player* player = lobby_get_player_validate_token(&server, join->token, join->id);
+    Player* player = lobby_get_player_validate_token(&server, request->token, request->id);
     if (player == null)
     {
         server_send_error(from, TYPE_JOIN, ERR_EXPIRED);
@@ -224,12 +229,7 @@ void server_process_join(byte* buffer, const byte* from)
     sx_mutex_lock(server.mutex_room);
     if (player->room < 0)
     {
-        if (join->room < 0)
-            room_add_player_auto(&server, player);
-        else if (join->room < ROOM_COUNT)
-            room_add_player(&server, player, join->room);
-
-        if (player->room >= 0)
+        if(room_join(&server, player, request->param_count, request->matchmaking))
             room_check_master(&server, sx_time_now(), player->room);
     }
     sx_mutex_unlock(server.mutex_room);
@@ -447,7 +447,7 @@ void thread_listener(void* param)
         case TYPE_PACKET_RELIED: server_process_packet_relied(buffer, from); break;
         case TYPE_LOGIN: server_process_login(buffer, from); break;
         case TYPE_LOGOUT: server_process_logout(buffer, from); break;
-        case TYPE_ROOMS: server_process_rooms(buffer, from); break;
+        case TYPE_CREATE: server_process_create(buffer, from); break;
         case TYPE_JOIN: server_process_join(buffer, from); break;
         case TYPE_LEAVE: server_process_leave(buffer, from); break;
         }
@@ -456,7 +456,7 @@ void thread_listener(void* param)
     sx_trace_detach();
 }
 
-Config LoadConfig() 
+Config LoadConfig()
 {
     sx_trace();
 
@@ -467,11 +467,11 @@ Config LoadConfig()
     config.player_master_timeout = 5;
 
     FILE* file = null;
-    if (fopen_s(&file, "config.json", "r") == 0) 
+    if (fopen_s(&file, "config.json", "r") == 0)
     {
         char json_string[1024] = { 0 };
         fread_s(json_string, sizeof(json_string), 1, sizeof(json_string), file);
-        
+
         sx_json_node json_nodes[64] = { 0 };
         sx_json json = { 0 };
         json.nodes = json_nodes;

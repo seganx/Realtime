@@ -5,7 +5,7 @@
 #define TYPE_PING           1
 #define TYPE_LOGIN          10
 #define TYPE_LOGOUT         11
-#define TYPE_ROOMS          20
+#define TYPE_CREATE         20
 #define TYPE_JOIN           30
 #define TYPE_LEAVE          31
 #define TYPE_PACKET_UNRELY  40
@@ -21,8 +21,10 @@
 #define DEVICE_LEN          32
 #define THREAD_COUNTS       32
 #define ADDRESS_LEN         32
+#define ROOM_PROP_LEN       32
 #define ROOM_COUNT          1024
 #define ROOM_CAPACITY       16
+#define ROOM_PARAMS         4
 #define LOBBY_CAPACITY      (ROOM_COUNT * ROOM_CAPACITY)
 
 #define LOG                 1
@@ -50,7 +52,10 @@ Lobby;
 typedef struct Room
 {
     sbyte   count;
-    sbyte   capacity;
+    ulong   open_time;
+    ushort  open_timeout;
+    byte    properties[ROOM_PROP_LEN];
+    sint    matchmaking[ROOM_PARAMS];
     Player* players[ROOM_CAPACITY];
 }
 Room;
@@ -131,32 +136,34 @@ typedef struct Logout
 }
 Logout;
 
-typedef struct Rooms
+typedef struct Create
 {
     byte    type;
     uint    token;
     short   id;
-    byte    option;
-    short   start;
-    byte    count;
+    short   open_timeout;
+    byte    properties[ROOM_PROP_LEN];
+    sint    matchmaking[ROOM_PARAMS];
 }
-Rooms;
+Create;
 
-typedef struct RoomsResponse
+typedef struct CreateResponse
 {
     byte    type;
     sbyte   error;
-    byte    count;
-    sbyte   players[256];
+    short   room;
+    sbyte   index;
+    byte    flag;
 }
-RoomsResponse;
+CreateResponse;
 
 typedef struct Join
 {
     byte    type;
     uint    token;
     short   id;
-    short   room;
+    byte    param_count;
+    sint    matchmaking[ROOM_PARAMS];
 }
 Join;
 
