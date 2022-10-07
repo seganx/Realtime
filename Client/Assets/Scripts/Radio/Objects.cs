@@ -52,7 +52,7 @@ namespace SeganX.Network
         public class Message
         {
             public float delayTime = 0;
-            public float maxDelayTime = 0;
+            public float maxDelayTime = 0.5f;
         }
 
         public class RequestMessage : Message

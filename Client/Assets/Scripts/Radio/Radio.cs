@@ -14,30 +14,27 @@ namespace SeganX.Network
 {
     public class Radio : MonoBehaviour
     {
-        public const int Capacity = 32;
+        private const int maxPlayers = 16;
 
         private IEnumerator Start()
         {
             var wait = new WaitForSecondsRealtime(1);
             while (true)
             {
-                for (int i = 0; i < cache.Count; i++)
+                for (int i = 0; i < maxPlayers; i++)
                 {
-                    var player = cache[i];
+                    var player = players[i];
                     if (player == null || player.IsMine) continue;
 
                     var deltaTime = player.Update(PlayerActiveTimeout);
                     if (deltaTime > PlayerDestoryTimeout)
-                    {
-                        cache[i] = null;
-                        players.Remove(player);
-                        player.CallDestroy();
-                        OnPlayerDestroyed?.Invoke(player);
-                    }
+                        RemovePlayer(i);
                 }
 
                 if (messenger.Loggedin)
                     SendPing();
+                else if (messenger.Started)
+                    Login();
 
                 yield return wait;
             }
@@ -62,23 +59,23 @@ namespace SeganX.Network
         /// STATIC MEMBERS
         //////////////////////////////////////////////////////
         private static Radio instance = null;
+        private static readonly NetPlayer myPlayer = new NetPlayer();
         private static readonly Messenger messenger = new Messenger();
-        private static readonly List<NetPlayer> cache = new List<NetPlayer>(Capacity);
+        private static readonly NetPlayer[] players = new NetPlayer[maxPlayers];
 
         private static bool logingin = false;
         private static float aliveTime = -10;
         private static float DeathTime => Time.realtimeSinceStartup - aliveTime;
 
-
-        public static readonly List<NetPlayer> players = new List<NetPlayer>(Capacity);
         public static event Action<Error> OnError = null;
         public static event Action<NetPlayer> OnPlayerConnected = null;
         public static event Action<NetPlayer> OnPlayerDestroyed = null;
 
-        public static float PlayerActiveTimeout { get; set; } = 15;
-        public static float PlayerDestoryTimeout { get; set; } = 300;
+        public static float PlayerActiveTimeout { get; set; } = 5;
+        public static float PlayerDestoryTimeout { get; set; } = 30;
         public static long Ping { get; private set; } = 0;
 
+        public static NetPlayer Player => myPlayer;
         public static uint Token => messenger.Token;
         public static short RoomId => messenger.Room;
         public static sbyte PlayerId => messenger.Index;
@@ -90,9 +87,6 @@ namespace SeganX.Network
         {
             if (instance != null) return;
 
-            for (int i = 0; i < cache.Capacity; i++)
-                cache.Add(null);
-
             instance = new GameObject(nameof(Radio)).AddComponent<Radio>();
             //instance.gameObject.hideFlags = HideFlags.HideInHierarchy;
             DontDestroyOnLoad(instance);
@@ -100,7 +94,6 @@ namespace SeganX.Network
             var addressParts = serverAddress.Split(':');
             var serverIpPort = new IPEndPoint(IPAddress.Parse(addressParts[0]), int.Parse(addressParts[1]));
             messenger.Start(deviceId, serverIpPort, OnReceivedMessage);
-            Login();
         }
 
         public static void Disconnect()
@@ -109,25 +102,26 @@ namespace SeganX.Network
 
             Destroy(instance.gameObject);
             messenger.Stop();
-
-            cache.Clear();
-            foreach (var player in players)
-            {
-                player.CallDestroy();
-                OnPlayerDestroyed?.Invoke(player);
-            }
-            players.Clear();
             Ping = 0;
+
+            for (int i = 0; i < maxPlayers; i++)
+                RemovePlayer(i);
         }
 
         private static void Login(Action OnSuccess = null)
         {
             if (instance == null || logingin) return;
+            logingin = true;
             messenger.Login(error =>
             {
                 logingin = false;
                 if (ErrorExist(error) == false)
+                {
+                    aliveTime = Time.realtimeSinceStartup;
                     OnSuccess?.Invoke();
+                    if (PlayerId >= 0)
+                        AddPlayer(PlayerId);
+                }
             });
         }
 
@@ -167,21 +161,25 @@ namespace SeganX.Network
 
         public static void SendUnreliable(Target target, BufferWriter data, sbyte otherId = 0)
         {
-            messenger.SendUnreliable(target, data, otherId);
+            if (IsConnected)
+                messenger.SendUnreliable(target, data, otherId);
         }
 
         public static void SendReliable(Target target, BufferWriter data, sbyte otherId = 0)
         {
+            if (IsConnected == false) return;
+
             switch (target)
             {
                 case Target.All:
-                    foreach (var player in players)
-                        messenger.SendReliable(player.Id, data);
+                    for (int i = 0; i < maxPlayers; i++)
+                        if (players[i] != null)
+                            messenger.SendReliable(players[i].Id, data);
                     break;
                 case Target.Other:
-                    foreach (var player in players)
-                        if (player.IsOther)
-                            messenger.SendReliable(player.Id, data);
+                    for (int i = 0; i < maxPlayers; i++)
+                        if (players[i] != null && players[i].IsOther)
+                            messenger.SendReliable(players[i].Id, data);
                     break;
                 case Target.Player:
                     messenger.SendReliable(otherId, data);
@@ -201,7 +199,7 @@ namespace SeganX.Network
             });
         }
 
-        public static bool ErrorExist(Error error, Action OnExpiredAndLoggedin = null)
+        private static bool ErrorExist(Error error, Action OnExpiredAndLoggedin = null)
         {
             if (error == Error.NoError) return false;
 
@@ -215,9 +213,9 @@ namespace SeganX.Network
 
         private static void OnReceivedMessage(Error error, sbyte senderId, BufferReader buffer, byte dataSize)
         {
-            if (ErrorExist(error)) return;
+            if (IsConnected == false || ErrorExist(error)) return;
 
-            var player = cache[senderId];
+            var player = players[senderId];
             if (player == null)
                 player = AddPlayer(senderId);
 
@@ -226,13 +224,20 @@ namespace SeganX.Network
 
         private static NetPlayer AddPlayer(sbyte id)
         {
-            var player = cache[id];
+            var player = players[id];
             if (player != null) return player;
 
-            player = cache[id] = new NetPlayer(id);
-            players.Add(player);
+            player = players[id] = (id == PlayerId) ? myPlayer : new NetPlayer();
+            player.SetId(id);
             OnPlayerConnected?.Invoke(player);
             return player;
+        }
+
+        private static void RemovePlayer(int index)
+        {
+            if (players[index] != null)
+                OnPlayerDestroyed?.Invoke(players[index]);
+            players[index] = null;
         }
     }
 }

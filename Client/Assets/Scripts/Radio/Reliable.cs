@@ -33,7 +33,7 @@ namespace SeganX.Network.Internal
                 AcksCache.Add(-1);
         }
 
-        public void SendReliable(sbyte targetIndex, byte[] data, byte dataSize, int retryCount = 10, float retryDelay = 0.2f)
+        public void SendReliable(sbyte targetIndex, byte[] data, byte dataSize, int retryCount = 10, float retryDelay = 0.5f)
         {
             if (dataSize > 235)
             {
@@ -65,7 +65,7 @@ namespace SeganX.Network.Internal
             else
                 ReadyMessages.Add(message);
 
-            Debug.Log($"{logName} Send Reliable Target:{targetIndex} Ack:{AckNumber}");
+            //Debug.Log($"{logName} Send Reliable Target:{targetIndex} Ack:{AckNumber}");
         }
 
         public void Update(float elapsedTime)
@@ -88,7 +88,7 @@ namespace SeganX.Network.Internal
             if (sender < 0 || sender >= AcksCache.Capacity) return;
 
             byte ack = receivedBuffer.ReadByte();
-            Debug.Log($"{logName} Received Reliable Sender:{sender} Ack:{ack}");
+            //Debug.Log($"{logName} Received Reliable Sender:{sender} Ack:{ack}");
 
             SendRelied(sender, ack);
 
@@ -101,10 +101,14 @@ namespace SeganX.Network.Internal
 
         public void ReceivedRelied(Error error, sbyte sender, BufferReader receivedBuffer)
         {
-            if (error != Error.NoError) return;
+            if (error != Error.NoError)
+            {
+                OnReceivedMessage(error, 0, receivedBuffer, 0);
+                return;
+            }
             byte ack = receivedBuffer.ReadByte();
 
-            Debug.Log($"{logName} Received Relied Sender:{sender} Ack:{ack}");
+            //Debug.Log($"{logName} Received Relied Sender:{sender} Ack:{ack}");
 
             var message = SendingMessages.Find(x => x.ack == ack && x.targetIndex == sender);
             if (message != null)
@@ -122,7 +126,7 @@ namespace SeganX.Network.Internal
                 socket.Send(serverAddress, message.buffer.Bytes, message.buffer.Length);
                 message.retryCount--;
 
-                Debug.Log($"{logName} Send Reliable Target:{message.targetIndex} Ack:{message.ack}");
+                //Debug.Log($"{logName} Send Reliable Target:{message.targetIndex} Ack:{message.ack}");
             }
             else SendingMessages.Remove(message);
         }
@@ -139,7 +143,7 @@ namespace SeganX.Network.Internal
                 .AppendByte(ack);
             socket.Send(serverAddress, sendBuffer.Bytes, sendBuffer.Length);
 
-            Debug.Log($"{logName} Send Relied Target:{sender} Ack:{ack}");
+            //Debug.Log($"{logName} Send Relied Target:{sender} Ack:{ack}");
         }
     }
 }

@@ -8,7 +8,7 @@ namespace SeganX.Network
         private readonly char[] charArray = new char[1];
         private readonly byte[] byteArray = new byte[1];
         private readonly sbyte[] sbyteArray = new sbyte[1];
-        private readonly short[] shortArray = new short[1];
+        private readonly short[] shortArray = new short[4];
         private readonly ushort[] ushortArray = new ushort[1];
         private readonly float[] floatArray = new float[4];
         private readonly int[] intArray = new int[1];
@@ -137,6 +137,17 @@ namespace SeganX.Network
             return value;
         }
 
+        public Vector3 ReadVector3(float precision)
+        {
+            Read(shortArray, sizeof(short) * 3);
+            Vector3 value;
+            value.x = shortArray[0] / precision;
+            value.y = shortArray[1] / precision;
+            value.z = shortArray[2] / precision;
+            return value;
+        }
+
+
         public Vector4 ReadVector4()
         {
             Read(floatArray, sizeof(float) * 4);
@@ -156,6 +167,17 @@ namespace SeganX.Network
             value.y = floatArray[1];
             value.z = floatArray[2];
             value.w = floatArray[3];
+            return value;
+        }
+        
+        public Quaternion ReadQuaternion(float precision)
+        {
+            Read(shortArray, sizeof(short) * 4);
+            Quaternion value;
+            value.x = shortArray[0] / precision;
+            value.y = shortArray[1] / precision;
+            value.z = shortArray[2] / precision;
+            value.w = shortArray[3] / precision;
             return value;
         }
     }

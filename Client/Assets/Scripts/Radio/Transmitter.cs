@@ -58,7 +58,7 @@ namespace SeganX.Network.Internal
                 Debug.Log($"{logName} Send request to server Type:{messageType} Size:{dataSize}");
         }
 
-        public void SendMessageReliable(sbyte targetIndex, byte[] data, byte dataSize, int retryCount = 10, float retryDelay = 0.2f)
+        public void SendMessageReliable(sbyte targetIndex, byte[] data, byte dataSize, int retryCount = 20, float retryDelay = 0.5f)
         {
             reliable?.SendReliable(targetIndex, data, dataSize, retryCount, retryDelay);
         }

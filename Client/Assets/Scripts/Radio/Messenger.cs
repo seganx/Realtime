@@ -6,7 +6,7 @@ namespace SeganX.Network.Internal
     public class Messenger
     {
         private const string logName = "[Network] [Messenger]";
-        private const float delayFactor = 1000;
+        private const float delayFactor = 1;
 
         private ClientInfo clientInfo = new ClientInfo();
         private readonly Transmitter transmitter = new Transmitter();
@@ -74,11 +74,15 @@ namespace SeganX.Network.Internal
                 {
                     var rectoken = buffer.ReadUint();
                     var reclobby = buffer.ReadShort();
+                    var recroom = buffer.ReadShort();
+                    var recindex = buffer.ReadSbyte();
                     var checksum = buffer.ReadUint();
-                    if (checksum == ComputeChecksum(buffer.Bytes, 8))
+                    if (checksum == ComputeChecksum(buffer.Bytes, 11))
                     {
                         clientInfo.token = rectoken;
                         clientInfo.id = reclobby;
+                        clientInfo.room = recroom;
+                        clientInfo.index = recindex;
                         callback?.Invoke(error);
                     }
                     else callback?.Invoke(Error.Invalid);

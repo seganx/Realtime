@@ -1,6 +1,5 @@
 ﻿using System;
 using UnityEngine;
-using SeganX.Network.Internal;
 
 namespace SeganX.Network
 {
@@ -9,17 +8,19 @@ namespace SeganX.Network
         private float lastActiveTime = 0;
 
         public sbyte Id { get; private set; } = -1;
+        public bool IsMine { get; private set; } = true;
+        public bool IsOther { get; private set; } = false;
         public bool IsActive { get; private set; } = true;
 
-        public bool IsMine => Radio.PlayerId == Id;
-        public bool IsOther => Radio.PlayerId != Id;
+        public event Action<byte[], byte> OnReceived = (bytes, size) => { };
 
-        public event Action<BufferReader, byte> OnReceived = (buffer, size) => { };
-        public event Action OnDestory = () => { };
+        private readonly byte[] bytes = new byte[512];
 
-        public NetPlayer(sbyte id)
+        public void SetId(sbyte id)
         {
             Id = id;
+            IsMine = Radio.PlayerId == id;
+            IsOther = Radio.PlayerId != id;
         }
 
         public float Update(float activeTimeout)
@@ -32,12 +33,8 @@ namespace SeganX.Network
         public void CallReceived(BufferReader buffer, byte dataSize)
         {
             lastActiveTime = Time.time;
-            OnReceived(buffer, dataSize);
-        }
-
-        public void CallDestroy()
-        {
-            OnDestory();
+            buffer.ReadBytes(bytes, dataSize);
+            OnReceived(bytes, dataSize);
         }
 
         public void SendUnreliable(Target target, BufferWriter data, sbyte otherId = 0)
