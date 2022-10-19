@@ -124,17 +124,14 @@ bool room_is_open(const Room* room, const sx_time now)
     return sx_time_diff(now, room->open_time) <= room->open_timeout;
 }
 
-bool room_is_match(Room* room, byte params_count, int* params) 
+bool room_is_match(Room* room, int* params) 
 {
-    if (params_count > ROOM_PARAMS) 
-        params_count = ROOM_PARAMS;
-
     bool result = true;
-    for (byte i = 0; i < params_count && result; i++)
+    for (byte i = 0; i < ROOM_PARAMS && result; i++)
     {
         int room_param = room->matchmaking[i];
         int param_low = params[i * 2];
-        int param_high = params[i * 2] + 1;
+        int param_high = params[i * 2 + 1];
         result = result && param_low <= room_param && room_param <= param_high;
     }
     return result;
@@ -148,18 +145,18 @@ bool room_create(Server* server, Player* player, ushort timeout, byte* propertie
     room->open_time = sx_time_now();
     room->open_timeout = timeout;
     sx_mem_copy(room->properties, properties, ROOM_PROP_LEN);
-    sx_mem_copy(room->matchmaking, matchmaking, ROOM_PARAMS);
+    sx_mem_copy(room->matchmaking, matchmaking, ROOM_PARAMS * sizeof(sint));
     return room_add_player(server, player, roomid);
 }
 
-bool room_join(Server* server, Player* player, byte params_count, int* params)
+bool room_join(Server* server, Player* player, int* params)
 {
     sx_time now = sx_time_now();
     for (short roomid = 0; roomid < ROOM_COUNT; roomid++)
     {
         Room* room = &server->rooms[roomid];
-        if (room->count >= server->config.room_capacity) continue;
-        if (room_is_open(room, now) && room_is_match(room, params_count, params))
+        if (0 < room->count && room->count >= server->config.room_capacity) continue;
+        if (room_is_open(room, now) && room_is_match(room, params))
             return room_add_player(server, player, roomid);
     }
     return false;

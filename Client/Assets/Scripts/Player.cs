@@ -8,6 +8,7 @@ public class Player : MonoBehaviour
     public enum MessageType : byte { Info = 1, Position = 2 }
 
     private NetPlayer netPlayer;
+    private BufferReader reader = new BufferReader();
     private byte colorIndex = 0;
 
     public float speed = 2;
@@ -19,15 +20,16 @@ public class Player : MonoBehaviour
         netPlayer = player;
         netPlayer.OnReceived += (buffer, size) =>
         {
-            var type = (MessageType)buffer.ReadByte();
+            reader.Reset(buffer);
+            var type = (MessageType)reader.ReadByte();
             switch (type)
             {
                 case MessageType.Position:
-                    Position = buffer.ReadVector3();
+                    Position = reader.ReadVector3();
                     break;
 
                 case MessageType.Info:
-                    colorIndex = buffer.ReadByte();
+                    colorIndex = reader.ReadByte();
                     ChangeColor(colorIndex);
                     break;
             }

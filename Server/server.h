@@ -17,13 +17,14 @@
 #define ERR_INVALID         -1
 #define ERR_EXPIRED         -2
 #define ERR_IS_FULL         -3
+#define ERR_MATCHMAKE       -4
 
 #define DEVICE_LEN          32
 #define THREAD_COUNTS       32
 #define ADDRESS_LEN         32
 #define ROOM_PROP_LEN       32
 #define ROOM_COUNT          1024
-#define ROOM_CAPACITY       16
+#define ROOM_CAPACITY       4
 #define ROOM_PARAMS         4
 #define LOBBY_CAPACITY      (ROOM_COUNT * ROOM_CAPACITY)
 
@@ -162,8 +163,7 @@ typedef struct Join
     byte    type;
     uint    token;
     short   id;
-    byte    param_count;
-    sint    matchmaking[ROOM_PARAMS];
+    sint    matchmaking[ROOM_PARAMS * 2];
 }
 Join;
 
@@ -174,6 +174,7 @@ typedef struct JoinResponse
     short   room;
     sbyte   index;
     byte    flag;
+    byte    properties[ROOM_PROP_LEN];
 }
 JoinResponse;
 

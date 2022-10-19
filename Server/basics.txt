@@ -78,7 +78,6 @@ Join room
 1	type = 30
 4	token
 2	id
-1	matchmaking params count
 4   low bound 0
 4   high bound 0
 4   low bound 1
@@ -94,6 +93,7 @@ Join response
 2	room
 1	index
 1	flag
+32  properties
 
 ===============
 

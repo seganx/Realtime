@@ -30,7 +30,7 @@ namespace SeganX.Network
             return deltaTime;
         }
 
-        public void CallReceived(BufferReader buffer, byte dataSize)
+        internal void CallReceived(BufferReader buffer, byte dataSize)
         {
             lastActiveTime = Time.time;
             buffer.ReadBytes(bytes, dataSize);

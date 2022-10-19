@@ -6,7 +6,7 @@ namespace SeganX.Network.Internal
     public class Messenger
     {
         private const string logName = "[Network] [Messenger]";
-        private const float delayFactor = 1;
+        private const float delayFactor = 1000;
 
         private ClientInfo clientInfo = new ClientInfo();
         private readonly Transmitter transmitter = new Transmitter();
@@ -131,28 +131,46 @@ namespace SeganX.Network.Internal
             });
         }
 
-        public void GetRooms(short startRoomIndex, byte count, bool excludeFullRooms, System.Action<Error, byte, byte[]> callback)
+        public void CreateRoom(short openTimeout, byte[] properties, MatchmakingParams matchmaking, System.Action<Error, short, sbyte> callback)
         {
             if (clientInfo.device == null || clientInfo.token == 0) return;
 
+#if UNITY_EDITOR
+            if (properties.Length != 32)
+            {
+                Debug.LogError($"{logName} CreateRoom: Length of property must be 32 bytes!");
+                return;
+            }
+#endif
+
             sendBuffer.Reset()
-                .AppendByte((byte)MessageType.Rooms)
+                .AppendByte((byte)MessageType.CreateRoom)
                 .AppendUint(clientInfo.token)
                 .AppendShort(clientInfo.id)
-                .AppendByte(excludeFullRooms ? (byte)1 : (byte)0)
-                .AppendShort(startRoomIndex)
-                .AppendByte(count);
+                .AppendShort(openTimeout)
+                .AppendBytes(properties, 32)
+                .AppendInt(matchmaking.a)
+                .AppendInt(matchmaking.b)
+                .AppendInt(matchmaking.c)
+                .AppendInt(matchmaking.d);
 
-            transmitter.SendRequestToServer(MessageType.Rooms, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
+            Debug.Log($"{logName} Create room Token:{clientInfo.token} Id:{clientInfo.id} Timeout:{openTimeout} Matchmaking:{matchmaking}");
+            transmitter.SendRequestToServer(MessageType.CreateRoom, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
             {
-                var roomCount = buffer.ReadByte();
-                var rooms = new byte[roomCount];
-                buffer.ReadBytes(rooms, roomCount);
-                callback?.Invoke(error, roomCount, rooms);
+
+                if (error == Error.NoError)
+                {
+                    clientInfo.room = buffer.ReadShort();
+                    clientInfo.index = buffer.ReadSbyte();
+                    Flag = (Flag)buffer.ReadByte();
+                    Debug.Log($"{logName} Create Room response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
+                    callback?.Invoke(error, clientInfo.room, clientInfo.index);
+                }
+                else callback?.Invoke(error, -1, -1);
             });
         }
 
-        public void JoinRoom(short roomIndex = -1, System.Action<Error, short, sbyte> callback = null)
+        public void JoinRoom(MatchmakingRanges matchmaking, System.Action<Error, short, sbyte, byte[]> callback = null)
         {
             if (clientInfo.device == null || clientInfo.token == 0) return;
 
@@ -160,9 +178,16 @@ namespace SeganX.Network.Internal
                 .AppendByte((byte)MessageType.Join)
                 .AppendUint(clientInfo.token)
                 .AppendShort(clientInfo.id)
-                .AppendShort(roomIndex);
+                .AppendInt(matchmaking.aMin)
+                .AppendInt(matchmaking.aMax)
+                .AppendInt(matchmaking.bMin)
+                .AppendInt(matchmaking.bMax)
+                .AppendInt(matchmaking.cMin)
+                .AppendInt(matchmaking.cMax)
+                .AppendInt(matchmaking.dMin)
+                .AppendInt(matchmaking.dMax);
 
-            Debug.Log($"{logName} Join to {roomIndex} Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
+            Debug.Log($"{logName} Join room Token:{clientInfo.token} Id:{clientInfo.id} Matchmaking:{matchmaking}");
             transmitter.SendRequestToServer(MessageType.Join, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
             {
                 if (error == Error.NoError)
@@ -170,11 +195,15 @@ namespace SeganX.Network.Internal
                     clientInfo.room = buffer.ReadShort();
                     clientInfo.index = buffer.ReadSbyte();
                     Flag = (Flag)buffer.ReadByte();
-                    callback?.Invoke(error, clientInfo.room, clientInfo.index);
+                    
+                    var properties = new byte[32];
+                    buffer.ReadBytes(properties, 32);
+                    
+                    Debug.Log($"{logName} Join Room response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
+                    callback?.Invoke(error, clientInfo.room, clientInfo.index, properties);
                 }
-                else callback?.Invoke(error, -1, -1);
+                else callback?.Invoke(error, -1, -1, null);
 
-                Debug.Log($"{logName} Join to {roomIndex} response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
             });
         }
 
@@ -194,9 +223,8 @@ namespace SeganX.Network.Internal
             {
                 clientInfo.room = -1;
                 clientInfo.index = -1;
-                callback?.Invoke(error);
-
                 Debug.Log($"{logName} Leave response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
+                callback?.Invoke(error);
             });
         }
 

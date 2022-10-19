@@ -55,7 +55,7 @@ namespace SeganX.Network.Internal
             socket.Send(serverAddress, request.data, request.dataSize);
 
             if (messageType != MessageType.Ping)
-                Debug.Log($"{logName} Send request to server Type:{messageType} Size:{dataSize}");
+                Debug.Log($"{logName} Sent request to server Type:{messageType} Size:{dataSize}");
         }
 
         public void SendMessageReliable(sbyte targetIndex, byte[] data, byte dataSize, int retryCount = 20, float retryDelay = 0.5f)
@@ -135,12 +135,12 @@ namespace SeganX.Network.Internal
             var request = requestsPool.Find(x => x.type == messageType);
             if (request == null) return;
 
+            if (messageType != MessageType.Ping)
+                Debug.Log($"{logName} Received response from server Type:{messageType} Error:{error}");
+
             request.type = 0;
             request.callback?.Invoke(error, receivedBuffer);
             request.callback = null;
-
-            if (messageType != MessageType.Ping)
-                Debug.Log($"{logName} Received request from server Type:{messageType} Error:{error}");
         }
 
         private void SendRequest(RequestMessage request, float elapsedTime)

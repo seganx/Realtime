@@ -17,7 +17,7 @@ Player* lobby_add_player(Server* server, const char* device, const byte* from, c
 void    lobby_remove_player(Server* server, const short id);
 
 bool    room_create(Server* server, Player* player, ushort timeout, byte* properties, int* matchmaking);
-bool    room_join(Server* server, Player* player, byte params_count, int* params);
+bool    room_join(Server* server, Player* player, int* params);
 
 bool    room_add_player_auto(Server* server, Player* player);
 bool    room_add_player(Server* server, Player* player, const short roomid);

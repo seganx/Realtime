@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
 using SeganX.Network.Internal;
 using System.Net;
@@ -125,25 +124,26 @@ namespace SeganX.Network
             });
         }
 
-        public static void GetRooms(short startRoomIndex, byte count, bool excludeFullRooms, Action<byte, byte[]> callback)
+        public static void CreateRoom(short openTimeout, byte[] properties, MatchmakingParams matchmaking, Action<short, sbyte> callback)
         {
             if (instance == null) return;
 
-            messenger.GetRooms(startRoomIndex, count, excludeFullRooms, (error, rcount, rooms) =>
+            messenger.CreateRoom(openTimeout, properties, matchmaking, (error, roomId, playerId) =>
             {
-                if (ErrorExist(error, () => GetRooms(startRoomIndex, count, excludeFullRooms, callback))) return;
-                callback?.Invoke(rcount, rooms);
+                if (ErrorExist(error, () => CreateRoom(openTimeout, properties, matchmaking, callback))) return;
+                callback?.Invoke(roomId, playerId);
+                AddPlayer(playerId);
             });
         }
 
-        public static void JoinRoom(short roomIndex = -1, Action<short, sbyte> callback = null)
+        public static void JoinRoom(MatchmakingRanges matchmaking, Action<short, sbyte, byte[]> callback = null)
         {
             if (instance == null || RoomId >= 0) return;
 
-            messenger.JoinRoom(roomIndex, (error, roomId, playerId) =>
+            messenger.JoinRoom(matchmaking, (error, roomId, playerId, properties) =>
             {
-                if (ErrorExist(error, () => JoinRoom(roomIndex, callback))) return;
-                callback?.Invoke(roomId, playerId);
+                if (ErrorExist(error, () => JoinRoom(matchmaking, callback))) return;
+                callback?.Invoke(roomId, playerId, properties);
                 AddPlayer(playerId);
             });
         }

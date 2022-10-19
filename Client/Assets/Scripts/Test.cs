@@ -46,34 +46,21 @@ public class Test : MonoBehaviour
             Radio.Disconnect();
 
         rect.y += 40;
-        if (GUI.Button(rect, "Get Rooms"))
-            Radio.GetRooms(0, 10, true, (count, rooms) =>
-            {
-                string str = $"Rooms: Count[{count}] - Rooms: ";
-                for (int i = 0; i < count; i++)
-                    str += rooms[i] + " ";
-                Debug.Log(str);
-            });
+        if (GUI.Button(rect, "Create Room"))
+        {
+            var properties = System.Text.Encoding.ASCII.GetBytes("12345678901234567890123456789012");
+            var matchmaking = new MatchmakingParams { a = 1 };
+            Radio.CreateRoom(1000, properties, matchmaking, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+        }
 
 
         rect.y += 40;
-        GUI.Label(rect, "Join Room");
-        rect.y += 15;
-        rect.width = 40;
-        if (GUI.Button(rect, "Auto"))
-            Radio.JoinRoom(-1, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
-        rect.x += 40;
-        if (GUI.Button(rect, "0"))
-            Radio.JoinRoom(0, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
-        rect.x += 40;
-        if (GUI.Button(rect, "1"))
-            Radio.JoinRoom(1, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
-        rect.x += 40;
-        if (GUI.Button(rect, "2"))
-            Radio.JoinRoom(2, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
-        rect.x += 40;
-        if (GUI.Button(rect, "3"))
-            Radio.JoinRoom(3, (roomid, playerid) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}]"));
+        if (GUI.Button(rect, "Join Room"))
+        {
+            var matchmaking = new MatchmakingRanges { aMin = 3, aMax = 4 };
+            Radio.JoinRoom(matchmaking, (roomid, playerid, properties) => Debug.Log($"Joined: Room[{roomid}] - Player[{playerid}] - Properties{System.Text.Encoding.ASCII.GetString(properties)}"));
+        }
+
 
         rect.x = 10; rect.width = 150;
         rect.y += 40;

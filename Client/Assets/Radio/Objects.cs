@@ -7,7 +7,7 @@ namespace SeganX.Network
         Ping = 1,
         Login = 10,
         Logout = 11,
-        Rooms = 20,
+        CreateRoom = 20,
         Join = 30,
         Leave = 31,
         Unreliable = 40,
@@ -27,7 +27,8 @@ namespace SeganX.Network
         NoError = 0,
         Invalid = -1,
         Expired = -2,
-        IsFull = -3
+        IsFull = -3,
+        JoinFailed = -4,
     }
 
     [System.Flags]
@@ -37,6 +38,28 @@ namespace SeganX.Network
         Master = 1
     }
 
+    public struct MatchmakingParams
+    {
+        public int a, b, c, d;
+
+        public override string ToString()
+        {
+            return $"{a}|{b}|{c}|{d}";
+        }
+    }
+
+    public struct MatchmakingRanges
+    {
+        public int aMin, aMax;
+        public int bMin, bMax;
+        public int cMin, cMax;
+        public int dMin, dMax;
+
+        public override string ToString()
+        {
+            return $"a[{aMin},{aMax}] b[{bMin},{bMax}] c[{cMin},{cMax}] d[{dMin},{dMax}]";
+        }
+    }
 
     namespace Internal
     {

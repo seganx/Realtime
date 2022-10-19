@@ -200,8 +200,7 @@ void server_process_create(byte* buffer, const byte* from)
     sx_mutex_lock(server.mutex_room);
     if (player->room < 0)
     {
-        if (room_create(&server, player, request->open_timeout, request->properties, request->matchmaking))
-            room_check_master(&server, sx_time_now(), player->room);
+        room_create(&server, player, request->open_timeout, request->properties, request->matchmaking);
     }
     sx_mutex_unlock(server.mutex_room);
 
@@ -210,6 +209,10 @@ void server_process_create(byte* buffer, const byte* from)
         server_send_error(from, TYPE_CREATE, ERR_IS_FULL);
         return;
     }
+    
+    sx_mutex_lock(server.mutex_room);
+    room_check_master(&server, sx_time_now(), player->room);
+    sx_mutex_unlock(server.mutex_room);
 
     CreateResponse response = { TYPE_CREATE, 0, player->room, player->index, player->flag };
     server_send(from, &response, sizeof(CreateResponse));
@@ -229,18 +232,23 @@ void server_process_join(byte* buffer, const byte* from)
     sx_mutex_lock(server.mutex_room);
     if (player->room < 0)
     {
-        if(room_join(&server, player, request->param_count, request->matchmaking))
-            room_check_master(&server, sx_time_now(), player->room);
+        room_join(&server, player, request->matchmaking);
     }
     sx_mutex_unlock(server.mutex_room);
 
     if (player->room < 0)
     {
-        server_send_error(from, TYPE_JOIN, ERR_IS_FULL);
+        server_send_error(from, TYPE_JOIN, ERR_MATCHMAKE);
         return;
     }
 
     JoinResponse response = { TYPE_JOIN, 0, player->room, player->index, player->flag };
+    
+    sx_mutex_lock(server.mutex_room);
+    room_check_master(&server, sx_time_now(), player->room);
+    sx_mem_copy(response.properties, server.rooms[player->room].properties, ROOM_PROP_LEN);
+    sx_mutex_unlock(server.mutex_room);
+
     server_send(from, &response, sizeof(JoinResponse));
 }
 
@@ -396,7 +404,7 @@ void server_process_packet_relied(byte* buffer, const byte* from)
 
 void server_report(void)
 {
-    sx_print("Total players in lobby: %d", server.lobby.count);
+    sx_print("Total players connected: %d", server.lobby.count);
 
     int total_rooms = 0, total_players = 0;
     for (uint r = 0; r < ROOM_COUNT; r++)
