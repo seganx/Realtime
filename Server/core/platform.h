@@ -113,6 +113,7 @@ SEGAN_LIB_API int sx_threadpool_add_job(struct sx_threadpool * threadpool, sx_th
 SEGAN_LIB_API uint sx_threadpool_num_jobs(struct sx_threadpool * threadpool);
 SEGAN_LIB_API uint sx_threadpool_num_busy_threads(struct sx_threadpool * threadpool);
 
+SEGAN_LIB_API unsigned long long sx_get_tick();
 SEGAN_LIB_API void sx_sleep(const uint miliseconds);
 SEGAN_LIB_API char sx_getch();
 

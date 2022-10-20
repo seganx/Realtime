@@ -117,7 +117,7 @@ int room_find_free(Server* server)
     return -1;
 }
 
-bool room_is_open(const Room* room, const sx_time now) 
+bool room_is_open(const Room* room, const ulong now)
 {
     if (room->open_time == 0) return false;  // this means that the room is never openned!
     if (room->open_timeout == 0) return true;
@@ -151,7 +151,7 @@ bool room_create(Server* server, Player* player, ushort timeout, byte* propertie
 
 bool room_join(Server* server, Player* player, int* params)
 {
-    sx_time now = sx_time_now();
+    ulong now = sx_time_now();
     for (short roomid = 0; roomid < ROOM_COUNT; roomid++)
     {
         Room* room = &server->rooms[roomid];
@@ -203,7 +203,7 @@ void room_remove_player(Server* server, Player* player)
     player->flag = 0;
 }
 
-void room_check_master(Server* server, sx_time now, const short roomid)
+void room_check_master(Server* server, ulong now, const short roomid)
 {
     Room* room = &server->rooms[roomid];
     if (room->count < 1) return;

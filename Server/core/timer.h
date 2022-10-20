@@ -11,15 +11,13 @@
 
 #include "def.h"
 
-typedef time_t sx_time;
-
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-SEGAN_LIB_API sx_time sx_time_now();
-SEGAN_LIB_API sx_time sx_time_diff(const sx_time t1, const sx_time t2);
-SEGAN_LIB_API void sx_time_print(char* dest, const uint destsize, const sx_time timeval);
+SEGAN_LIB_API ulong sx_time_now();
+SEGAN_LIB_API ulong sx_time_diff(const ulong t1, const ulong t2);
+SEGAN_LIB_API void sx_time_print(char* dest, const uint destsize, const ulong timeval);
 
 
 #ifdef __cplusplus

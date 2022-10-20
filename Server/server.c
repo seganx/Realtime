@@ -65,7 +65,7 @@ void server_cleanup(void)
 {
     sx_trace();
 
-    sx_time now = sx_time_now();
+    ulong now = sx_time_now();
     sx_mutex_lock(server.mutex_lobby);
 
     for (short i = 0; i < LOBBY_CAPACITY; i++)
@@ -89,7 +89,7 @@ void server_rooms_update()
 {
     sx_trace();
 
-    sx_time now = sx_time_now();
+    ulong now = sx_time_now();
     sx_mutex_lock(server.mutex_room);
     for (short i = 0; i < ROOM_COUNT; i++)
         room_check_master(&server, now, i);
@@ -120,7 +120,7 @@ void server_ping(byte* buffer, const byte* from)
         return;
     }
 
-    sx_time now = sx_time_now();
+    ulong now = sx_time_now();
     sx_mutex_lock(server.mutex_lobby);
     sx_mem_copy(player->from, from, ADDRESS_LEN);
     player->active_time = now;
@@ -466,8 +466,8 @@ Config LoadConfig()
     Config config = { 0 };
     config.port = 36000;
     config.room_capacity = ROOM_CAPACITY;
-    config.player_timeout = 300;
-    config.player_master_timeout = 5;
+    config.player_timeout = 300000;
+    config.player_master_timeout = 5000;
 
     FILE* file = null;
     if (fopen_s(&file, "config.json", "r") == 0)
@@ -536,6 +536,8 @@ int main()
                 server_report();
             else if (sx_str_cmp(cmd2, "room") == 0)
                 room_report(&server, value);
+            else if (sx_str_cmp(cmd2, "time") == 0)
+                sx_print("%llu", sx_time_now());
         }
 
         sx_sleep(1);

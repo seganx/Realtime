@@ -22,7 +22,7 @@ bool    room_join(Server* server, Player* player, int* params);
 bool    room_add_player_auto(Server* server, Player* player);
 bool    room_add_player(Server* server, Player* player, const short roomid);
 void    room_remove_player(Server* server, Player* player);
-void    room_check_master(Server* server, sx_time now, const short roomid);
+void    room_check_master(Server* server, ulong now, const short roomid);
 void    room_report(Server* server, int roomid);
 
 void    player_report(Player* player);

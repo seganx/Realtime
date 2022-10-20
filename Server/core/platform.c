@@ -499,7 +499,7 @@ static void threadpool_worker(void* p)
             void* param = job->param;
             free(job);
 
-            //  execute hte job
+            //  execute the job
             func(param);
 
             //  release a thread to pop another job
@@ -644,6 +644,15 @@ SEGAN_LIB_API uint sx_threadpool_num_busy_threads(struct sx_threadpool * threadp
     return threadpool->num_threads_working;
 }
 
+
+SEGAN_LIB_API unsigned long long sx_get_tick()
+{
+#if defined(_WIN32)
+    return GetTickCount64();
+#else
+    
+#endif    
+}
 
 SEGAN_LIB_API void sx_sleep(const uint miliseconds)
 {

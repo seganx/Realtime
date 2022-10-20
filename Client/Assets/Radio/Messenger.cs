@@ -20,7 +20,7 @@ namespace SeganX.Realtime.Internal
         public bool Loggedin => clientInfo.token != 0;
 
         public Flag Flag { get; private set; } = 0;
-        public long ServerTime { get; private set; } = 0;
+        public ulong ServerTime { get; private set; } = 0;
 
         public void Start(byte[] devicebytes, IPEndPoint serverAddress, System.Action<Error, sbyte, BufferReader, byte> OnReceivedMessage)
         {
@@ -126,7 +126,7 @@ namespace SeganX.Realtime.Internal
             transmitter.SendRequestToServer(MessageType.Ping, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
             {
                 long sentTick = buffer.ReadLong();
-                ServerTime = buffer.ReadLong();
+                ServerTime = buffer.ReadUlong();
                 Flag = (Flag)buffer.ReadByte();
                 callback?.Invoke(error, Tick() - sentTick);
             });

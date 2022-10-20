@@ -73,6 +73,7 @@ namespace SeganX.Realtime
 
         public static float PlayerActiveTimeout { get; set; } = 5;
         public static float PlayerDestoryTimeout { get; set; } = 30;
+        public static byte PlayersCount { get; private set; } = 0;
         public static long Ping { get; private set; } = 0;
 
         public static NetPlayer Player => myPlayer;
@@ -80,7 +81,7 @@ namespace SeganX.Realtime
         public static short RoomId => messenger.Room;
         public static sbyte PlayerId => messenger.Index;
         public static bool IsMaster => messenger.Flag.HasFlag(Flag.Master);
-        public static long ServerTime => messenger.ServerTime;
+        public static ulong ServerTime => messenger.ServerTime;
         public static bool IsConnected => messenger.Loggedin && DeathTime < 5.0f;
 
         public static void Connect(string serverAddress, byte[] deviceId, Action callback)
@@ -234,6 +235,7 @@ namespace SeganX.Realtime
         {
             var player = players[id];
             if (player != null) return player;
+            PlayersCount++;
 
             player = players[id] = (id == PlayerId) ? myPlayer : new NetPlayer();
             player.SetId(id);
@@ -244,7 +246,10 @@ namespace SeganX.Realtime
         private static void RemovePlayer(int index)
         {
             if (players[index] != null)
+            {
+                PlayersCount--;
                 OnPlayerDestroyed?.Invoke(players[index]);
+            }
             players[index] = null;
         }
     }
