@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using SeganX.Network;
+using SeganX.Realtime;
 
 public class Player : MonoBehaviour
 {

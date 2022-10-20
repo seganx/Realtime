@@ -1,6 +1,6 @@
 using System;
 using UnityEngine;
-using SeganX.Network.Internal;
+using SeganX.Realtime.Internal;
 using System.Net;
 using System.Collections;
 
@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Threading;
 #endif
 
-namespace SeganX.Network
+namespace SeganX.Realtime
 {
     public class Radio : MonoBehaviour
     {

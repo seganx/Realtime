@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace SeganX.Network
+namespace SeganX.Realtime
 {
     public class NetPlayer
     {

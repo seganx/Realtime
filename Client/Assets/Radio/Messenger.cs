@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using System.Net;
 
-namespace SeganX.Network.Internal
+namespace SeganX.Realtime.Internal
 {
     public class Messenger
     {

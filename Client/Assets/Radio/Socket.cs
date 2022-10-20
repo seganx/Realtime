@@ -2,7 +2,7 @@
 using System.Net;
 using System.Net.Sockets;
 
-namespace SeganX.Network.Internal
+namespace SeganX.Realtime.Internal
 {
     public class Socket
     {

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SeganX.Network
+namespace SeganX.Realtime
 {
     public enum MessageType : byte
     {

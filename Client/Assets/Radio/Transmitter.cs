@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Net;
 using UnityEngine;
 
-namespace SeganX.Network.Internal
+namespace SeganX.Realtime.Internal
 {
     public class Transmitter
     {

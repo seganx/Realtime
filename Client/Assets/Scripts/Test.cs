@@ -1,5 +1,5 @@
 ﻿using UnityEngine;
-using SeganX.Network;
+using SeganX.Realtime;
 
 public class Test : MonoBehaviour
 {
