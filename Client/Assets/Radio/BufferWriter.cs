@@ -14,6 +14,7 @@ namespace SeganX.Realtime
         private readonly int[] intArray = new int[4];
         private readonly uint[] uintArray = new uint[1];
         private readonly long[] longArray = new long[1];
+        private readonly ulong[] ulongArray = new ulong[1];
 
         public byte[] Bytes => buffer;
         public int Length { get; private set; } = 0;
@@ -94,6 +95,12 @@ namespace SeganX.Realtime
         {
             longArray[0] = value;
             return Append(longArray, sizeof(long));
+        }
+
+        public BufferWriter AppendUlong(ulong value)
+        {
+            ulongArray[0] = value;
+            return Append(ulongArray, sizeof(ulong));
         }
 
         public BufferWriter AppendBytes(byte[] value, int length)

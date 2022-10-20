@@ -109,11 +109,11 @@ namespace SeganX.Realtime.Internal
             transmitter.SendRequestToServer(MessageType.Logout, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) => callback?.Invoke());
         }
 
-        public void SendPing(System.Action<Error, long> callback)
+        public void SendPing(System.Action<Error, ulong> callback)
         {
             if (clientInfo.token == 0 || clientInfo.device == null) return;
 
-            long Tick() => System.DateTime.Now.Ticks / System.TimeSpan.TicksPerMillisecond;
+            ulong Tick() => (ulong)System.DateTime.Now.Ticks / System.TimeSpan.TicksPerMillisecond;
 
             sendBuffer.Reset()
                 .AppendByte((byte)MessageType.Ping)
@@ -121,11 +121,11 @@ namespace SeganX.Realtime.Internal
                 .AppendShort(clientInfo.id)
                 .AppendShort(clientInfo.room)
                 .AppendSbyte(clientInfo.index)
-                .AppendLong(Tick());
+                .AppendUlong(Tick());
 
             transmitter.SendRequestToServer(MessageType.Ping, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
             {
-                long sentTick = buffer.ReadLong();
+                ulong sentTick = buffer.ReadUlong();
                 ServerTime = buffer.ReadUlong();
                 Flag = (Flag)buffer.ReadByte();
                 callback?.Invoke(error, Tick() - sentTick);

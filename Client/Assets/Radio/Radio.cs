@@ -64,6 +64,7 @@ namespace SeganX.Realtime
         private static readonly NetPlayer[] players = new NetPlayer[maxPlayers];
 
         private static bool logingin = false;
+        private static ulong deltaTime = 0;
         private static float aliveTime = -10;
         private static float DeathTime => Time.realtimeSinceStartup - aliveTime;
 
@@ -74,15 +75,23 @@ namespace SeganX.Realtime
         public static float PlayerActiveTimeout { get; set; } = 5;
         public static float PlayerDestoryTimeout { get; set; } = 30;
         public static byte PlayersCount { get; private set; } = 0;
-        public static long Ping { get; private set; } = 0;
+        public static ulong Ping { get; private set; } = 0;
 
         public static NetPlayer Player => myPlayer;
         public static uint Token => messenger.Token;
         public static short RoomId => messenger.Room;
         public static sbyte PlayerId => messenger.Index;
         public static bool IsMaster => messenger.Flag.HasFlag(Flag.Master);
-        public static ulong ServerTime => messenger.ServerTime;
         public static bool IsConnected => messenger.Loggedin && DeathTime < 5.0f;
+
+        public static ulong ServerTime
+        {
+            get
+            {
+                var now = (ulong)DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                return now + deltaTime;
+            }
+        }
 
         public static void Connect(string serverAddress, byte[] deviceId, Action callback)
         {
@@ -203,6 +212,8 @@ namespace SeganX.Realtime
             messenger.SendPing((error, pingTime) =>
             {
                 if (ErrorExist(error)) return;
+                var now = (ulong)DateTime.Now.Ticks / TimeSpan.TicksPerMillisecond;
+                deltaTime = messenger.ServerTime - now;
                 aliveTime = Time.realtimeSinceStartup;
                 Ping = pingTime;
             });
