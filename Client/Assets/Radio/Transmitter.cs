@@ -106,6 +106,8 @@ namespace SeganX.Network.Internal
 
         private bool Receive()
         {
+            if (OnReceivedMessage == null) return false;
+
             var packsize = socket.Receive(receivedBuffer.Bytes);
             if (packsize < 1) return false;
 

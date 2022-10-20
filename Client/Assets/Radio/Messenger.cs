@@ -44,7 +44,7 @@ namespace SeganX.Network.Internal
         {
             if (Started == false) return;
 
-            Logout();
+            Logout(null);
             transmitter.Stop();
             clientInfo = new ClientInfo();
         }
@@ -83,17 +83,18 @@ namespace SeganX.Network.Internal
                         clientInfo.id = reclobby;
                         clientInfo.room = recroom;
                         clientInfo.index = recindex;
+
+                        Debug.Log($"{logName} Login response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
                         callback?.Invoke(error);
                     }
                     else callback?.Invoke(Error.Invalid);
                 }
                 else callback?.Invoke(error);
 
-                Debug.Log($"{logName} Login response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
             });
         }
 
-        public void Logout()
+        public void Logout(System.Action callback)
         {
             if (clientInfo.token == 0 || clientInfo.device == null) return;
 
@@ -105,7 +106,7 @@ namespace SeganX.Network.Internal
                 .AppendSbyte(clientInfo.index)
                 .AppendUint(ComputeChecksum(sendBuffer.Bytes, sendBuffer.Length));
 
-            transmitter.SendRequestToServer(MessageType.Logout, sendBuffer.Bytes, sendBuffer.Length, delayFactor, null);
+            transmitter.SendRequestToServer(MessageType.Logout, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) => callback?.Invoke());
         }
 
         public void SendPing(System.Action<Error, long> callback)
@@ -195,10 +196,10 @@ namespace SeganX.Network.Internal
                     clientInfo.room = buffer.ReadShort();
                     clientInfo.index = buffer.ReadSbyte();
                     Flag = (Flag)buffer.ReadByte();
-                    
+
                     var properties = new byte[32];
                     buffer.ReadBytes(properties, 32);
-                    
+
                     Debug.Log($"{logName} Join Room response Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
                     callback?.Invoke(error, clientInfo.room, clientInfo.index, properties);
                 }

@@ -18,7 +18,7 @@ public class Test : MonoBehaviour
 
     private void OnDisable()
     {
-        Radio.Disconnect();
+        Radio.Disconnect(null);
         Radio.OnPlayerConnected -= Player.CreatePlayer;
         Radio.OnPlayerDestroyed -= Player.DestroyPlayer;
     }
@@ -36,14 +36,14 @@ public class Test : MonoBehaviour
         rect.y += 20;
         if (GUI.Button(rect, "Start"))
 #if UNITY_STANDALONE_WIN
-            Radio.Connect(testAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")));
+            Radio.Connect(testAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier + System.DateTime.Now.Ticks, "sajad")), () => Debug.Log("Radio has been connected!"));
 #else
             Plankton.Start(serverAddress, System.Text.Encoding.ASCII.GetBytes(ComputeMD5(SystemInfo.deviceUniqueIdentifier, "sajad")));
 #endif
 
         rect.y += 40;
         if (GUI.Button(rect, "End"))
-            Radio.Disconnect();
+            Radio.Disconnect(() => Debug.Log("Radio has been disconnected!"));
 
         rect.y += 40;
         if (GUI.Button(rect, "Create Room"))

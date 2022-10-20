@@ -58,6 +58,7 @@ namespace SeganX.Network
         /// STATIC MEMBERS
         //////////////////////////////////////////////////////
         private static Radio instance = null;
+        private static Action onConnected = null;
         private static readonly NetPlayer myPlayer = new NetPlayer();
         private static readonly Messenger messenger = new Messenger();
         private static readonly NetPlayer[] players = new NetPlayer[maxPlayers];
@@ -82,12 +83,12 @@ namespace SeganX.Network
         public static long ServerTime => messenger.ServerTime;
         public static bool IsConnected => messenger.Loggedin && DeathTime < 5.0f;
 
-        public static void Connect(string serverAddress, byte[] deviceId)
+        public static void Connect(string serverAddress, byte[] deviceId, Action callback)
         {
             if (instance != null) return;
+            onConnected = callback;
 
             instance = new GameObject(nameof(Radio)).AddComponent<Radio>();
-            //instance.gameObject.hideFlags = HideFlags.HideInHierarchy;
             DontDestroyOnLoad(instance);
 
             var addressParts = serverAddress.Split(':');
@@ -95,19 +96,24 @@ namespace SeganX.Network
             messenger.Start(deviceId, serverIpPort, OnReceivedMessage);
         }
 
-        public static void Disconnect()
+        public static void Disconnect(Action callback)
         {
             if (instance == null) return;
 
-            Destroy(instance.gameObject);
-            messenger.Stop();
-            Ping = 0;
+            messenger.Logout(() =>
+            {
+                Destroy(instance.gameObject);
+                messenger.Stop();
+                Ping = 0;
 
-            for (int i = 0; i < maxPlayers; i++)
-                RemovePlayer(i);
+                for (int i = 0; i < maxPlayers; i++)
+                    RemovePlayer(i);
+
+                callback?.Invoke();
+            });
         }
 
-        private static void Login(Action OnSuccess = null)
+        private static void Login(Action callback = null)
         {
             if (instance == null || logingin) return;
             logingin = true;
@@ -117,7 +123,9 @@ namespace SeganX.Network
                 if (ErrorExist(error) == false)
                 {
                     aliveTime = Time.realtimeSinceStartup;
-                    OnSuccess?.Invoke();
+                    callback?.Invoke();
+                    onConnected?.Invoke();
+                    onConnected = null;
                     if (PlayerId >= 0)
                         AddPlayer(PlayerId);
                 }

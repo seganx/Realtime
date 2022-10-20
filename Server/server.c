@@ -263,11 +263,6 @@ void server_process_leave(byte* buffer, const byte* from)
         room_remove_player(&server, player);
         sx_mutex_unlock(server.mutex_room);
     }
-    else
-    {
-        server_send_error(from, TYPE_LEAVE, ERR_EXPIRED);
-        return;
-    }
 
     LeaveResponse response = { TYPE_LEAVE, 0 };
     server_send(from, &response, sizeof(LeaveResponse));
