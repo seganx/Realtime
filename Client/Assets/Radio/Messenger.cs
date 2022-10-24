@@ -6,19 +6,20 @@ namespace SeganX.Realtime.Internal
     public class Messenger
     {
         private const string logName = "[Network] [Messenger]";
-        private const float delayFactor = 1000;
 
         private ClientInfo clientInfo = new ClientInfo();
         private readonly Transmitter transmitter = new Transmitter();
         private readonly BufferWriter sendBuffer = new BufferWriter(256);
 
         public bool Started => clientInfo.device != null;
+        public bool Stopped => clientInfo.device == null;
         public uint Token => clientInfo.token;
         public short Id => clientInfo.id;
         public short Room => clientInfo.room;
         public sbyte Index => clientInfo.index;
         public bool Loggedin => clientInfo.token != 0;
 
+        public float DelayFactor { get; set; } = 1;
         public Flag Flag { get; private set; } = 0;
         public ulong ServerTime { get; private set; } = 0;
 
@@ -42,8 +43,7 @@ namespace SeganX.Realtime.Internal
 
         public void Stop()
         {
-            if (Started == false) return;
-
+            if (Stopped) return;
             Logout(null);
             transmitter.Stop();
             clientInfo = new ClientInfo();
@@ -68,7 +68,7 @@ namespace SeganX.Realtime.Internal
                 .AppendUint(ComputeChecksum(sendBuffer.Bytes, sendBuffer.Length));
 
             Debug.Log($"{logName} Login {clientInfo.device}");
-            transmitter.SendRequestToServer(MessageType.Login, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
+            transmitter.SendRequestToServer(MessageType.Login, sendBuffer.Bytes, sendBuffer.Length, DelayFactor, (error, buffer) =>
             {
                 if (error == Error.NoError)
                 {
@@ -106,14 +106,14 @@ namespace SeganX.Realtime.Internal
                 .AppendSbyte(clientInfo.index)
                 .AppendUint(ComputeChecksum(sendBuffer.Bytes, sendBuffer.Length));
 
-            transmitter.SendRequestToServer(MessageType.Logout, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) => callback?.Invoke());
+            transmitter.SendRequestToServer(MessageType.Logout, sendBuffer.Bytes, sendBuffer.Length, DelayFactor, (error, buffer) => callback?.Invoke());
         }
 
         public void SendPing(System.Action<Error, ulong> callback)
         {
             if (clientInfo.token == 0 || clientInfo.device == null) return;
 
-            ulong Tick() => (ulong)System.DateTime.Now.Ticks / System.TimeSpan.TicksPerMillisecond;
+            ulong Tick() => (ulong)System.DateTimeOffset.Now.ToUnixTimeMilliseconds();
 
             sendBuffer.Reset()
                 .AppendByte((byte)MessageType.Ping)
@@ -123,7 +123,7 @@ namespace SeganX.Realtime.Internal
                 .AppendSbyte(clientInfo.index)
                 .AppendUlong(Tick());
 
-            transmitter.SendRequestToServer(MessageType.Ping, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
+            transmitter.SendRequestToServer(MessageType.Ping, sendBuffer.Bytes, sendBuffer.Length, DelayFactor, (error, buffer) =>
             {
                 ulong sentTick = buffer.ReadUlong();
                 ServerTime = buffer.ReadUlong();
@@ -132,7 +132,7 @@ namespace SeganX.Realtime.Internal
             });
         }
 
-        public void CreateRoom(short openTimeout, byte[] properties, MatchmakingParams matchmaking, System.Action<Error, short, sbyte> callback)
+        public void CreateRoom(ushort openTimeout, byte[] properties, MatchmakingParams matchmaking, System.Action<Error, short, sbyte> callback)
         {
             if (clientInfo.device == null || clientInfo.token == 0) return;
 
@@ -148,7 +148,7 @@ namespace SeganX.Realtime.Internal
                 .AppendByte((byte)MessageType.CreateRoom)
                 .AppendUint(clientInfo.token)
                 .AppendShort(clientInfo.id)
-                .AppendShort(openTimeout)
+                .AppendUshort(openTimeout)
                 .AppendBytes(properties, 32)
                 .AppendInt(matchmaking.a)
                 .AppendInt(matchmaking.b)
@@ -156,7 +156,7 @@ namespace SeganX.Realtime.Internal
                 .AppendInt(matchmaking.d);
 
             Debug.Log($"{logName} Create room Token:{clientInfo.token} Id:{clientInfo.id} Timeout:{openTimeout} Matchmaking:{matchmaking}");
-            transmitter.SendRequestToServer(MessageType.CreateRoom, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
+            transmitter.SendRequestToServer(MessageType.CreateRoom, sendBuffer.Bytes, sendBuffer.Length, DelayFactor, (error, buffer) =>
             {
 
                 if (error == Error.NoError)
@@ -189,7 +189,7 @@ namespace SeganX.Realtime.Internal
                 .AppendInt(matchmaking.dMax);
 
             Debug.Log($"{logName} Join room Token:{clientInfo.token} Id:{clientInfo.id} Matchmaking:{matchmaking}");
-            transmitter.SendRequestToServer(MessageType.Join, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
+            transmitter.SendRequestToServer(MessageType.Join, sendBuffer.Bytes, sendBuffer.Length, DelayFactor, (error, buffer) =>
             {
                 if (error == Error.NoError)
                 {
@@ -220,7 +220,7 @@ namespace SeganX.Realtime.Internal
                 .AppendSbyte(clientInfo.index);
 
             Debug.Log($"{logName} Leave Token:{clientInfo.token} Id:{clientInfo.id} Room:{clientInfo.room} Index:{clientInfo.index}");
-            transmitter.SendRequestToServer(MessageType.Leave, sendBuffer.Bytes, sendBuffer.Length, delayFactor, (error, buffer) =>
+            transmitter.SendRequestToServer(MessageType.Leave, sendBuffer.Bytes, sendBuffer.Length, DelayFactor, (error, buffer) =>
             {
                 clientInfo.room = -1;
                 clientInfo.index = -1;
@@ -229,7 +229,7 @@ namespace SeganX.Realtime.Internal
             });
         }
 
-        public void SendUnreliable(Target target, BufferWriter data, sbyte targetId = 0)
+        public void SendUnreliable(Target target, BufferWriter data, sbyte targetId = -1)
         {
             if (clientInfo.device == null || clientInfo.token == 0) return;
             transmitter.SendMessageUnreliable(target, data.Bytes, (byte)data.Length, targetId);

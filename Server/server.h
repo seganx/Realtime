@@ -54,7 +54,7 @@ typedef struct Room
 {
     sbyte   count;
     ulong   open_time;
-    ushort  open_timeout;
+    ulong   open_timeout;
     byte    properties[ROOM_PROP_LEN];
     sint    matchmaking[ROOM_PARAMS];
     Player* players[ROOM_CAPACITY];
@@ -142,7 +142,7 @@ typedef struct Create
     byte    type;
     uint    token;
     short   id;
-    short   open_timeout;
+    ushort  open_timeout;
     byte    properties[ROOM_PROP_LEN];
     sint    matchmaking[ROOM_PARAMS];
 }

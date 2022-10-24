@@ -19,7 +19,10 @@ namespace SeganX.Realtime
         public byte[] Bytes => buffer;
         public int Posision { get; private set; } = 0;
 
-        public BufferReader() { }
+        public BufferReader(byte[] bytes)
+        {
+            Reset(bytes);
+        }
 
         public BufferReader(int size)
         {
@@ -176,7 +179,7 @@ namespace SeganX.Realtime
             value.w = floatArray[3];
             return value;
         }
-        
+
         public Quaternion ReadQuaternion(float precision)
         {
             Read(shortArray, sizeof(short) * 4);

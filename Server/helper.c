@@ -137,7 +137,7 @@ bool room_is_match(Room* room, int* params)
     return result;
 }
 
-bool room_create(Server* server, Player* player, ushort timeout, byte* properties, int* matchmaking)
+bool room_create(Server* server, Player* player, ulong timeout, byte* properties, int* matchmaking)
 {
     int roomid = room_find_empty(server);
     if (roomid < 0) return false;
@@ -155,7 +155,7 @@ bool room_join(Server* server, Player* player, int* params)
     for (short roomid = 0; roomid < ROOM_COUNT; roomid++)
     {
         Room* room = &server->rooms[roomid];
-        if (0 < room->count && room->count >= server->config.room_capacity) continue;
+        if (room->count < 1 || room->count >= server->config.room_capacity) continue;
         if (room_is_open(room, now) && room_is_match(room, params))
             return room_add_player(server, player, roomid);
     }

@@ -13,7 +13,7 @@ namespace SeganX.Realtime
         Unreliable = 40,
         Reliable = 41,
         Relied = 42
-}
+    }
 
     public enum Target : byte
     {
@@ -29,6 +29,7 @@ namespace SeganX.Realtime
         Expired = -2,
         IsFull = -3,
         JoinFailed = -4,
+        Disconnected = -100
     }
 
     [System.Flags]
@@ -59,6 +60,17 @@ namespace SeganX.Realtime
         {
             return $"a[{aMin},{aMax}] b[{bMin},{bMax}] c[{cMin},{cMax}] d[{dMin},{dMax}]";
         }
+    }
+
+    public class EventCode
+    {
+        public const byte Alive = 201;
+        public const byte Checkin = 205;
+        public const byte Welcome = 206;
+        public const byte PlayerData = 210;
+        public const byte CreateView = 211;
+        public const byte RemoveView = 212;
+        public const byte EventsView = 213;
     }
 
     namespace Internal

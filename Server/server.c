@@ -200,7 +200,7 @@ void server_process_create(byte* buffer, const byte* from)
     sx_mutex_lock(server.mutex_room);
     if (player->room < 0)
     {
-        room_create(&server, player, request->open_timeout, request->properties, request->matchmaking);
+        room_create(&server, player, request->open_timeout * 1000, request->properties, request->matchmaking);
     }
     sx_mutex_unlock(server.mutex_room);
 

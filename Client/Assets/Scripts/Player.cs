@@ -5,10 +5,13 @@ using SeganX.Realtime;
 
 public class Player : MonoBehaviour
 {
-    public enum MessageType : byte { Info = 1, Position = 2 }
+    public class MessageType
+    {
+        public const byte Info = 1;
+        public const byte Position = 2;
+    }
 
     private NetPlayer netPlayer;
-    private BufferReader reader = new BufferReader();
     private byte colorIndex = 0;
 
     public float speed = 2;
@@ -18,31 +21,14 @@ public class Player : MonoBehaviour
     public Player Setup(NetPlayer player)
     {
         netPlayer = player;
-        netPlayer.OnReceived += (buffer, size) =>
-        {
-            reader.Reset(buffer);
-            var type = (MessageType)reader.ReadByte();
-            switch (type)
-            {
-                case MessageType.Position:
-                    Position = reader.ReadVector3();
-                    break;
-
-                case MessageType.Info:
-                    colorIndex = reader.ReadByte();
-                    ChangeColor(colorIndex);
-                    break;
-            }
-        };
-
         return this;
     }
 
     private void Start()
     {
-        ChangeColor(colorIndex);
-        StartCoroutine(SendPosition());
-        StartCoroutine(SendInfo());
+        //ChangeColor(colorIndex);
+        //StartCoroutine(SendPosition());
+        //StartCoroutine(SendInfo());
     }
 
     private void Update()
@@ -76,9 +62,8 @@ public class Player : MonoBehaviour
             yield return wait;
             if (stopSend) continue;
             buffer.Reset();
-            buffer.AppendByte((byte)MessageType.Position);
             buffer.AppendVector3(Position);
-            netPlayer.SendUnreliable(Target.Other, buffer);
+            Radio.Send(MessageType.Position, false, buffer);
         }
     }
 
@@ -108,9 +93,8 @@ public class Player : MonoBehaviour
         if (netPlayer.IsMine)
         {
             BufferWriter buffer = new BufferWriter(128);
-            buffer.AppendByte((byte)MessageType.Info);
             buffer.AppendByte(colorIndex);
-            netPlayer.SendReliable(Target.Other, buffer);
+            Radio.Send(MessageType.Info, false, buffer);
         }
     }
 
@@ -121,11 +105,35 @@ public class Player : MonoBehaviour
 
     public static Player mine = null;
     public static readonly List<Player> all = new List<Player>(32);
-    public static bool stopSend = false;
+    public static bool stopSend = true;
+    private static BufferReader reader = new BufferReader(null);
+
+    static Player()
+    {
+        Radio.OnReceived += (netPlayer, eventCode, buffer, size) =>
+        {
+            var player = all.Find(x => x.netPlayer == netPlayer);
+            if (player == null) return;
+
+            switch (eventCode)
+            {
+                case MessageType.Position:
+                    reader.Reset(buffer);
+                    player.Position = reader.ReadVector3();
+                    break;
+
+                case MessageType.Info:
+                    reader.Reset(buffer);
+                    var colorIndex = reader.ReadByte();
+                    player.ChangeColor(colorIndex);
+                    break;
+            }
+        };
+    }
 
     public static void CreatePlayer(NetPlayer netPlayer)
     {
-        Debug.Log($"Created network player: {netPlayer}");
+        Debug.Log($"Created network player: {netPlayer}|{netPlayer.Name}");
 
         var prefab = Resources.Load<Player>("Game/Player");
         var res = Instantiate(prefab).GetComponent<Player>().Setup(netPlayer);
