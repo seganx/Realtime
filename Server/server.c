@@ -162,11 +162,9 @@ void server_process_login(byte* buffer, const byte* from)
 void server_process_logout(byte* buffer, const byte* from)
 {
     Logout* logout = (Logout*)buffer;
-    if (validate_player_id_range(logout->id) == false)
-        return;
-
-    if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum))
-        return;
+    if (logout->token == 0) return;
+    if (validate_player_id_range(logout->id) == false) return;
+    if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum)) return;
 
     Player* player = lobby_get_player_validate_all(&server, logout->token, logout->id, logout->room, logout->index);
     if (player == null)
@@ -209,7 +207,7 @@ void server_process_create(byte* buffer, const byte* from)
         server_send_error(from, TYPE_CREATE, ERR_IS_FULL);
         return;
     }
-    
+
     sx_mutex_lock(server.mutex_room);
     room_check_master(&server, sx_time_now(), player->room);
     sx_mutex_unlock(server.mutex_room);
@@ -243,7 +241,7 @@ void server_process_join(byte* buffer, const byte* from)
     }
 
     JoinResponse response = { TYPE_JOIN, 0, player->room, player->index, player->flag };
-    
+
     sx_mutex_lock(server.mutex_room);
     room_check_master(&server, sx_time_now(), player->room);
     sx_mem_copy(response.properties, server.rooms[player->room].properties, ROOM_PROP_LEN);

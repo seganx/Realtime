@@ -41,14 +41,14 @@ inline bool validate_player_index_range(const sbyte index)
 /////////////////////////////////////////////////////////////////////////////
 Player* lobby_get_player_validate_token(Server* server, const uint token, const short id)
 {
-    if (validate_player_id_range(id) == false) return null;
+    if (token > 0 && validate_player_id_range(id) == false) return null;
     Player* player = &server->lobby.players[id];
     return (player->token == token) ? player : null;
 }
 
 Player* lobby_get_player_validate_all(Server* server, const uint token, const short id, const short room, const sbyte index)
 {
-    if (validate_player_id_range(id) == false) return null;
+    if (token > 0 && validate_player_id_range(id) == false) return null;
     Player* player = &server->lobby.players[id];
     return (player->token == token && player->room == room && player->index == index) ? player : null;
 }
@@ -124,7 +124,7 @@ bool room_is_open(const Room* room, const ulong now)
     return sx_time_diff(now, room->open_time) <= room->open_timeout;
 }
 
-bool room_is_match(Room* room, int* params) 
+bool room_is_match(Room* room, int* params)
 {
     bool result = true;
     for (byte i = 0; i < ROOM_PARAMS && result; i++)
@@ -162,13 +162,6 @@ bool room_join(Server* server, Player* player, int* params)
     return false;
 }
 
-bool room_add_player_auto(Server* server, Player* player)
-{
-    int roomid = room_find_free(server);
-    if (roomid < 0) return false;
-    return room_add_player(server, player, roomid);
-}
-
 bool room_add_player(Server* server, Player* player, const short roomid)
 {
     Room* room = &server->rooms[roomid];
@@ -184,7 +177,6 @@ bool room_add_player(Server* server, Player* player, const short roomid)
             return true;
         }
     }
-
     return false;
 }
 

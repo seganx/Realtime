@@ -19,7 +19,6 @@ void    lobby_remove_player(Server* server, const short id);
 bool    room_create(Server* server, Player* player, ulong timeout, byte* properties, int* matchmaking);
 bool    room_join(Server* server, Player* player, int* params);
 
-bool    room_add_player_auto(Server* server, Player* player);
 bool    room_add_player(Server* server, Player* player, const short roomid);
 void    room_remove_player(Server* server, Player* player);
 void    room_check_master(Server* server, ulong now, const short roomid);
