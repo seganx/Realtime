@@ -402,10 +402,11 @@ void server_report(void)
     int total_rooms = 0, total_players = 0;
     for (uint r = 0; r < ROOM_COUNT; r++)
     {
-        if (server.rooms[r].count < 1) continue;
-        sx_print("Room[%d] -> %d players", r, server.rooms[r].count);
+        Room* room = &server.rooms[r];
+        if (room->count < 1) continue;
+        sx_print("Room[%d, %04d, %04d, %04d, %04d] -> %d players", r, room->count, room->matchmaking[0], room->matchmaking[1], room->matchmaking[2], room->matchmaking[3]);
         total_rooms++;
-        total_players += server.rooms[r].count;
+        total_players += room->count;
     }
     sx_print("Total active rooms: %d\nTotal players in room: %d", total_rooms, total_players);
 }
