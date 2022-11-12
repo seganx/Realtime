@@ -11,6 +11,7 @@
 #include "core/timer.h"
 #include "core/platform.h"
 #include "core/Json.h"
+#include <windows.h>
 
 Server server = { 0 };
 
@@ -141,13 +142,14 @@ void server_process_login(byte* buffer, const byte* from)
     Login* login = (Login*)buffer;
     if (checksum_is_invalid(buffer, sizeof(Login) - sizeof(uint), login->checksum)) return;
 
+    sx_mutex_lock(server.mutex_lobby);
     Player* player = lobby_find_player_by_device(&server, login->device);
     if (player == null)
     {
-        sx_mutex_lock(server.mutex_lobby);
         player = lobby_add_player(&server, login->device, from, server_get_token());
-        sx_mutex_unlock(server.mutex_lobby);
     }
+    sx_mutex_unlock(server.mutex_lobby);
+
     if (player == null)
     {
         server_send_error(from, TYPE_LOGIN, ERR_IS_FULL);
@@ -254,13 +256,13 @@ void server_process_leave(byte* buffer, const byte* from)
 {
     Leave* leave = (Leave*)buffer;
 
+    sx_mutex_lock(server.mutex_room);
     Player* player = lobby_get_player_validate_all(&server, leave->token, leave->id, leave->room, leave->index);
     if (player != null)
     {
-        sx_mutex_lock(server.mutex_room);
         room_remove_player(&server, player);
-        sx_mutex_unlock(server.mutex_room);
     }
+    sx_mutex_unlock(server.mutex_room);
 
     LeaveResponse response = { TYPE_LEAVE, 0 };
     server_send(from, &response, sizeof(LeaveResponse));
@@ -404,11 +406,37 @@ void server_report(void)
     {
         Room* room = &server.rooms[r];
         if (room->count < 1) continue;
-        sx_print("Room[%d, %04d, %04d, %04d, %04d] -> %d players", r, room->count, room->matchmaking[0], room->matchmaking[1], room->matchmaking[2], room->matchmaking[3]);
+        sx_print("Room[%d, %04d, %04d, %04d, %04d] -> %d players", r, room->matchmaking[0], room->matchmaking[1], room->matchmaking[2], room->matchmaking[3], room->count);
         total_rooms++;
         total_players += room->count;
     }
     sx_print("Total active rooms: %d\nTotal players in room: %d", total_rooms, total_players);
+}
+
+void server_report_log(FILE* file)
+{
+    fprintf(file, "token;id;room;index\n");
+    for (uint r = 0; r < LOBBY_CAPACITY; r++)
+    {
+        Player* player = &server.lobby.players[r];
+        fprintf(file, "%d;%d;%d;%d;\n", player->token, player->id, player->room, player->index);
+    }
+
+    fprintf(file, "index;count;m0;m1;m2;m3;p0;p1;p2;p3;\n");
+    for (uint r = 0; r < ROOM_COUNT; r++)
+    {
+        Room* room = &server.rooms[r];
+        fprintf(file, "%d;%d;%04d;%04d;%04d;%04d", r, room->count, room->matchmaking[0], room->matchmaking[1], room->matchmaking[2], room->matchmaking[3]);
+        for (int i = 0; i < ROOM_CAPACITY; i++)
+        {
+            Player* player = room->players[i];
+            if (player == null)
+                fprintf(file, ";-1");
+            else
+                fprintf(file, ";%d", player->id);
+        }
+        fprintf(file, "\n");
+    }
 }
 
 
@@ -537,6 +565,15 @@ int main()
                 room_report(&server, value);
             else if (sx_str_cmp(cmd2, "time") == 0)
                 sx_print("%llu", sx_time_now());
+        }
+        else if (sx_str_cmp(cmd1, "log") == 0)
+        {
+            FILE* file = null;
+            if (fopen_s(&file, cmd2, "a+") == 0)
+            {
+                server_report_log(file);
+                fclose(file);
+            }
         }
 
         sx_sleep(1);

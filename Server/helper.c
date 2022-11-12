@@ -87,6 +87,8 @@ Player* lobby_add_player(Server* server, const char* device, const byte* from, c
 
 void lobby_remove_player(Server* server, const short id)
 {
+    if (validate_player_id_range(id) == false) return;
+    if (server->lobby.players[id].token == 0) return;
     server->lobby.players[id].token = 0;
     server->lobby.count--;
 }
@@ -137,7 +139,7 @@ bool room_is_match(Room* room, int* params)
     return result;
 }
 
-bool room_create(Server* server, Player* player, ulong timeout, byte* properties, int* matchmaking)
+bool room_create(Server* server, Player* player, ulong timeout, byte* properties, sint* matchmaking)
 {
     int roomid = room_find_empty(server);
     if (roomid < 0) return false;
@@ -164,8 +166,10 @@ bool room_join(Server* server, Player* player, int* params)
 
 bool room_add_player(Server* server, Player* player, const short roomid)
 {
-    Room* room = &server->rooms[roomid];
+    if (validate_player_index_range(player->index)) return false;
+    if (validate_player_room_id_range(player->room)) return false;
 
+    Room* room = &server->rooms[roomid];
     for (byte i = 0; i < ROOM_CAPACITY; i++)
     {
         if (room->players[i] == null)

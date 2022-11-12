@@ -16,7 +16,7 @@ Player* lobby_find_player_by_device(Server* server, const char* device);
 Player* lobby_add_player(Server* server, const char* device, const byte* from, const uint token);
 void    lobby_remove_player(Server* server, const short id);
 
-bool    room_create(Server* server, Player* player, ulong timeout, byte* properties, int* matchmaking);
+bool    room_create(Server* server, Player* player, ulong timeout, byte* properties, sint* matchmaking);
 bool    room_join(Server* server, Player* player, int* params);
 
 bool    room_add_player(Server* server, Player* player, const short roomid);
