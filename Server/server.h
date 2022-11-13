@@ -78,9 +78,7 @@ typedef struct Server
     Lobby   lobby;
     Room    rooms[ROOM_COUNT];
 
-    struct sx_mutex* mutex_token;
-    struct sx_mutex* mutex_lobby;
-    struct sx_mutex* mutex_room;
+    struct sx_mutex* mutex;
 }
 Server;
 

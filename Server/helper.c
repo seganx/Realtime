@@ -35,7 +35,7 @@ inline bool validate_player_index_range(const sbyte index)
     return 0 <= index && index < ROOM_CAPACITY;
 }
 
-inline bool is_player_loggedin(const Player* player)
+bool is_player_loggedin(const Player* player)
 {
     return player->token > 0;
 }

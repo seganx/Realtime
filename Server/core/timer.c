@@ -7,7 +7,7 @@ SEGAN_LIB_API ulong sx_time_now()
 {
 #if defined(_WIN32) || defined(_WIN64)
     struct _timeb timebuffer;
-    _ftime(&timebuffer);
+    _ftime64_s(&timebuffer);
     return (ulong)(((timebuffer.time * 1000) + timebuffer.millitm));
 #else
     struct timeb timebuffer;

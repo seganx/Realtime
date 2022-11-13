@@ -18,25 +18,18 @@ Server server = { 0 };
 uint server_get_token()
 {
     uint result;
-    sx_mutex_lock(server.mutex_token);
     server.token++;
     if (server.token == 0) server.token++;
     result = server.token;
-    sx_mutex_unlock(server.mutex_token);
     return result;
 }
 
 void server_init()
 {
     sx_trace();
-
     sx_mem_set(&server, 0, sizeof(Server));
     server.token = 654987;
-
-    server.mutex_token = sx_mutex_create();
-    server.mutex_lobby = sx_mutex_create();
-    server.mutex_room = sx_mutex_create();
-
+    server.mutex = sx_mutex_create();
     sx_return();
 }
 
@@ -44,9 +37,7 @@ void server_shutdown(void)
 {
     sx_trace();
     sx_socket_close(server.socket);
-    sx_mutex_destroy(server.mutex_token);
-    sx_mutex_destroy(server.mutex_lobby);
-    sx_mutex_destroy(server.mutex_room);
+    sx_mutex_destroy(server.mutex);
     sx_return();
 }
 
@@ -67,23 +58,19 @@ void server_cleanup(void)
     sx_trace();
 
     ulong now = sx_time_now();
-    sx_mutex_lock(server.mutex_lobby);
+    sx_mutex_lock(server.mutex);
 
     for (short i = 0; i < LOBBY_CAPACITY; i++)
     {
         Player* player = &server.lobby.players[i];
-        bool is_loggedin = is_player_loggedin(player);
-        if (is_loggedin && sx_time_diff(now, player->active_time) > server.config.player_timeout)
+        if (is_player_loggedin(player) && sx_time_diff(now, player->active_time) > server.config.player_timeout)
         {
-            sx_mutex_lock(server.mutex_room);
             room_remove_player(&server, player);
-            sx_mutex_unlock(server.mutex_room);
-
             lobby_remove_player(&server, i);
         }
     }
 
-    sx_mutex_unlock(server.mutex_lobby);
+    sx_mutex_unlock(server.mutex);
     sx_return();
 }
 
@@ -92,10 +79,10 @@ void server_rooms_update()
     sx_trace();
 
     ulong now = sx_time_now();
-    sx_mutex_lock(server.mutex_room);
+    sx_mutex_lock(server.mutex);
     for (short i = 0; i < ROOM_COUNT; i++)
         room_check_master(&server, now, i);
-    sx_mutex_unlock(server.mutex_room);
+    sx_mutex_unlock(server.mutex);
 
     sx_return();
 }
@@ -113,157 +100,173 @@ void server_send_error(const byte* from, const byte type, const sbyte error)
 
 void server_ping(byte* buffer, const byte* from)
 {
-    Ping* ping = (Ping*)buffer;
+    sx_mutex_lock(server.mutex);
 
+    Ping* ping = (Ping*)buffer;
     Player* player = lobby_get_player_validate_all(&server, ping->token, ping->id, ping->room, ping->index);
-    if (player == null)
+
+    PingResponse response;
+    if (player != null)
     {
-        server_send_error(from, TYPE_PING, ERR_EXPIRED);
-        return;
+        ulong now = sx_time_now();
+        sx_mem_copy(player->from, from, ADDRESS_LEN);
+        player->active_time = now;
+        PingResponse temp = { TYPE_PING, 0, ping->time, now, player->flag };
+        response = temp;
     }
 
-    ulong now = sx_time_now();
-    sx_mutex_lock(server.mutex_lobby);
-    sx_mem_copy(player->from, from, ADDRESS_LEN);
-    player->active_time = now;
-    sx_mutex_unlock(server.mutex_lobby);
+    sx_mutex_unlock(server.mutex);
 
-    PingResponse response = { TYPE_PING, 0, ping->time, now, player->flag };
-    server_send(from, &response, sizeof(PingResponse));
+    if (player != null)
+        server_send(from, &response, sizeof(PingResponse));
+    else
+        server_send_error(from, TYPE_PING, ERR_EXPIRED);
 }
 
 void server_process_login(byte* buffer, const byte* from)
 {
+    sx_mutex_lock(server.mutex);
+
     if (server.lobby.count >= LOBBY_CAPACITY)
     {
+        sx_mutex_unlock(server.mutex);
         server_send_error(from, TYPE_LOGIN, ERR_IS_FULL);
         return;
     }
 
     Login* login = (Login*)buffer;
-    if (checksum_is_invalid(buffer, sizeof(Login) - sizeof(uint), login->checksum)) return;
+    if (checksum_is_invalid(buffer, sizeof(Login) - sizeof(uint), login->checksum))
+    {
+        sx_mutex_unlock(server.mutex);
+        return;
+    }
 
-    sx_mutex_lock(server.mutex_lobby);
     Player* player = lobby_find_player_by_device(&server, login->device);
     if (player == null)
-    {
         player = lobby_add_player(&server, login->device, from, server_get_token());
-    }
-    sx_mutex_unlock(server.mutex_lobby);
 
     if (player == null)
     {
+        sx_mutex_unlock(server.mutex);
         server_send_error(from, TYPE_LOGIN, ERR_IS_FULL);
         return;
     }
 
     LoginResponse response = { TYPE_LOGIN, 0, player->token, player->id, player->room, player->index };
+
+    sx_mutex_unlock(server.mutex);
+
     response.checksum = checksum_compute((const byte*)&response, sizeof(LoginResponse) - sizeof(uint));
     server_send(from, &response, sizeof(LoginResponse));
 }
 
 void server_process_logout(byte* buffer, const byte* from)
 {
-    Logout* logout = (Logout*)buffer;
-    if (logout->token == 0) return;
-    if (validate_player_id_range(logout->id) == false) return;
-    if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum)) return;
+    sx_mutex_lock(server.mutex);
 
-    Player* player = lobby_get_player_validate_all(&server, logout->token, logout->id, logout->room, logout->index);
-    if (player == null)
+    Logout* logout = (Logout*)buffer;
+
+    if (logout->token == 0 || validate_player_id_range(logout->id) == false)
     {
-        server_send_error(from, TYPE_LOGOUT, 0);
+        sx_mutex_unlock(server.mutex);
         return;
     }
 
-    sx_mutex_lock(server.mutex_room);
-    room_remove_player(&server, player);
-    sx_mutex_unlock(server.mutex_room);
+    if (checksum_is_invalid(buffer, sizeof(Logout) - sizeof(uint), logout->checksum))
+    {
+        sx_mutex_unlock(server.mutex);
+        return;
+    }
 
-    sx_mutex_lock(server.mutex_lobby);
-    lobby_remove_player(&server, logout->id);
-    sx_mutex_unlock(server.mutex_lobby);
+    Player* player = lobby_get_player_validate_all(&server, logout->token, logout->id, logout->room, logout->index);
+    if (player != null)
+    {
+        room_remove_player(&server, player);
+        lobby_remove_player(&server, logout->id);
+    }
+
+    sx_mutex_unlock(server.mutex);
 
     server_send_error(from, TYPE_LOGOUT, 0);
 }
 
 void server_process_create(byte* buffer, const byte* from)
 {
+    sx_mutex_lock(server.mutex);
+
     Create* request = (Create*)buffer;
 
     Player* player = lobby_get_player_validate_token(&server, request->token, request->id);
     if (player == null)
     {
+        sx_mutex_unlock(server.mutex);
         server_send_error(from, TYPE_CREATE, ERR_EXPIRED);
         return;
     }
 
-    sx_mutex_lock(server.mutex_room);
     if (is_player_not_joined_room(player))
-    {
         room_create(&server, player, request->open_timeout * 1000, request->properties, request->matchmaking);
-    }
-    sx_mutex_unlock(server.mutex_room);
 
     if (is_player_not_joined_room(player))
     {
+        sx_mutex_unlock(server.mutex);
         server_send_error(from, TYPE_CREATE, ERR_IS_FULL);
         return;
     }
 
-    sx_mutex_lock(server.mutex_room);
     room_check_master(&server, sx_time_now(), player->room);
-    sx_mutex_unlock(server.mutex_room);
 
     CreateResponse response = { TYPE_CREATE, 0, player->room, player->index, player->flag };
+
+    sx_mutex_unlock(server.mutex);
+
     server_send(from, &response, sizeof(CreateResponse));
 }
 
 void server_process_join(byte* buffer, const byte* from)
 {
+    sx_mutex_lock(server.mutex);
+
     Join* request = (Join*)buffer;
 
     Player* player = lobby_get_player_validate_token(&server, request->token, request->id);
     if (player == null)
     {
+        sx_mutex_unlock(server.mutex);
         server_send_error(from, TYPE_JOIN, ERR_EXPIRED);
         return;
     }
 
-    sx_mutex_lock(server.mutex_room);
     if (is_player_not_joined_room(player))
-    {
         room_join(&server, player, request->matchmaking);
-    }
-    sx_mutex_unlock(server.mutex_room);
 
     if (is_player_not_joined_room(player))
     {
+        sx_mutex_unlock(server.mutex);
         server_send_error(from, TYPE_JOIN, ERR_MATCHMAKE);
         return;
     }
 
-    JoinResponse response = { TYPE_JOIN, 0, player->room, player->index, player->flag };
-
-    sx_mutex_lock(server.mutex_room);
     room_check_master(&server, sx_time_now(), player->room);
-    sx_mem_copy(response.properties, server.rooms[player->room].properties, ROOM_PROP_LEN);
-    sx_mutex_unlock(server.mutex_room);
 
+    JoinResponse response = { TYPE_JOIN, 0, player->room, player->index, player->flag };
+    sx_mem_copy(response.properties, server.rooms[player->room].properties, ROOM_PROP_LEN);
+
+    sx_mutex_unlock(server.mutex);
+    
     server_send(from, &response, sizeof(JoinResponse));
 }
 
 void server_process_leave(byte* buffer, const byte* from)
 {
-    Leave* leave = (Leave*)buffer;
+    sx_mutex_lock(server.mutex);
 
-    sx_mutex_lock(server.mutex_room);
+    Leave* leave = (Leave*)buffer;
     Player* player = lobby_get_player_validate_all(&server, leave->token, leave->id, leave->room, leave->index);
     if (player != null)
-    {
         room_remove_player(&server, player);
-    }
-    sx_mutex_unlock(server.mutex_room);
+    
+    sx_mutex_unlock(server.mutex);
 
     LeaveResponse response = { TYPE_LEAVE, 0 };
     server_send(from, &response, sizeof(LeaveResponse));
