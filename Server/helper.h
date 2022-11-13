@@ -10,6 +10,12 @@ bool    validate_player_id_range(const short id);
 bool    validate_player_room_id_range(const short roomid);
 bool    validate_player_index_range(const sbyte index);
 
+bool    is_player_loggedin(const Player* player);
+bool    is_player_not_loggedin(const Player* player);
+bool    is_player_joined_room(const Player* player);
+bool    is_player_not_joined_room(const Player* player);
+
+
 Player* lobby_get_player_validate_token(Server* server, const uint token, const short id);
 Player* lobby_get_player_validate_all(Server* server, const uint token, const short id, const short room, const sbyte index);
 Player* lobby_find_player_by_device(Server* server, const char* device);

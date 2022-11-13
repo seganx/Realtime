@@ -35,6 +35,26 @@ inline bool validate_player_index_range(const sbyte index)
     return 0 <= index && index < ROOM_CAPACITY;
 }
 
+inline bool is_player_loggedin(const Player* player)
+{
+    return player->token > 0;
+}
+
+inline bool is_player_not_loggedin(const Player* player)
+{
+    return player->token == 0;
+}
+
+inline bool is_player_joined_room(const Player* player)
+{
+    return player->room >= 0;
+}
+
+inline bool is_player_not_joined_room(const Player* player)
+{
+    return player->room < 0;
+}
+
 
 /////////////////////////////////////////////////////////////////////////////
 //  LOBBY 
@@ -88,8 +108,11 @@ Player* lobby_add_player(Server* server, const char* device, const byte* from, c
 void lobby_remove_player(Server* server, const short id)
 {
     if (validate_player_id_range(id) == false) return;
-    if (server->lobby.players[id].token == 0) return;
-    server->lobby.players[id].token = 0;
+
+    Player* player = &server->lobby.players[id];
+    if (is_player_not_loggedin(player)) return;
+
+    player->token = 0;
     server->lobby.count--;
 }
 
@@ -166,8 +189,8 @@ bool room_join(Server* server, Player* player, int* params)
 
 bool room_add_player(Server* server, Player* player, const short roomid)
 {
-    if (validate_player_index_range(player->index)) return false;
-    if (validate_player_room_id_range(player->room)) return false;
+    if (is_player_not_loggedin(player)) return false;
+    if (is_player_joined_room(player)) return true;
 
     Room* room = &server->rooms[roomid];
     for (byte i = 0; i < ROOM_CAPACITY; i++)
@@ -186,6 +209,7 @@ bool room_add_player(Server* server, Player* player, const short roomid)
 
 void room_remove_player(Server* server, Player* player)
 {
+    if (is_player_not_joined_room(player)) return;
     if (validate_player_index_range(player->index) == false) return;
     if (validate_player_room_id_range(player->room) == false) return;
 

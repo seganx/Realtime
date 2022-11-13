@@ -72,7 +72,8 @@ void server_cleanup(void)
     for (short i = 0; i < LOBBY_CAPACITY; i++)
     {
         Player* player = &server.lobby.players[i];
-        if (player->token > 0 && sx_time_diff(now, player->active_time) > server.config.player_timeout)
+        bool is_loggedin = is_player_loggedin(player);
+        if (is_loggedin && sx_time_diff(now, player->active_time) > server.config.player_timeout)
         {
             sx_mutex_lock(server.mutex_room);
             room_remove_player(&server, player);
@@ -198,13 +199,13 @@ void server_process_create(byte* buffer, const byte* from)
     }
 
     sx_mutex_lock(server.mutex_room);
-    if (player->room < 0)
+    if (is_player_not_joined_room(player))
     {
         room_create(&server, player, request->open_timeout * 1000, request->properties, request->matchmaking);
     }
     sx_mutex_unlock(server.mutex_room);
 
-    if (player->room < 0)
+    if (is_player_not_joined_room(player))
     {
         server_send_error(from, TYPE_CREATE, ERR_IS_FULL);
         return;
@@ -230,13 +231,13 @@ void server_process_join(byte* buffer, const byte* from)
     }
 
     sx_mutex_lock(server.mutex_room);
-    if (player->room < 0)
+    if (is_player_not_joined_room(player))
     {
         room_join(&server, player, request->matchmaking);
     }
     sx_mutex_unlock(server.mutex_room);
 
-    if (player->room < 0)
+    if (is_player_not_joined_room(player))
     {
         server_send_error(from, TYPE_JOIN, ERR_MATCHMAKE);
         return;
