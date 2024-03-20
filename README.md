@@ -1,17 +1,13 @@
-# Radio: The ultra-lightweight online real-time game server
+# Radio: Ultra-Lightweight Real-Time Game Server
 
-## Introduction
-
-Welcome to the repository of the Ultra-Lightweight Online Real-Time Game Server, a groundbreaking server designed entirely in C with a focus on minimalistic memory usage. This project is tailored for developers and enthusiasts looking to explore or contribute to a lightweight, efficient gaming server.
+Welcome to Radio, an ultra-lightweight, real-time game server designed for minimalistic yet powerful online gaming experiences. Written entirely in C, Radio boasts an unparalleled zero memory footprint, setting a new standard in efficient game server design.
 
 ## Features
 
-- **Zero Memory Footprint:** Optimized to ensure minimal memory usage without compromising performance.
-- **Real-Time Interaction:** Engineered for seamless, real-time gameplay experiences.
-- **C Language:** Leverages the power and efficiency of C programming for maximum performance.
-- **Extensible:** Designed with modularity in mind, allowing for easy expansions and customizations.
-
-## Getting Started
+- **Ultra-Lightweight**: Crafted to provide essential functionality without any overhead.
+- **Zero Memory Footprint**: Meticulously optimized to ensure no additional memory is consumed during operation.
+- **Real-Time Performance**: Designed to facilitate instantaneous communication and interaction for real-time gaming experiences.
+- **Written in C**: Leverages the power and efficiency of the C programming language.
 
 ### Prerequisites
 
