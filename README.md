@@ -1,4 +1,4 @@
-# Ultra-Lightweight Online Real-Time Game Server
+# Radio: The ultra-lightweight online real-time game server
 
 ## Introduction
 
