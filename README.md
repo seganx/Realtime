@@ -9,6 +9,8 @@ Welcome to Radio, an ultra-lightweight, real-time game server designed for minim
 - **Real-Time Performance**: Designed to facilitate instantaneous communication and interaction for real-time gaming experiences.
 - **Written in C**: Leverages the power and efficiency of the C programming language.
 
+![Radio](radio.jpg)
+
 ### Prerequisites
 
 - Ensure you have a C compiler installed (e.g., GCC, Clang).
